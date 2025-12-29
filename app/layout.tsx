@@ -1,20 +1,22 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Playfair_Display, Inter } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
-import "./globals.css"
+import type React from "react";
+import type { Metadata } from "next";
+import { Playfair_Display, Inter } from "next/font/google";
+import { CartProvider } from "@/context/CartContext";
+import CartSidebar from "@/app/components/CartSidebar";
+import { Analytics } from "@vercel/analytics/next";
+import "./globals.css";
 
 const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-serif",
   display: "swap",
-})
+});
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
-})
+});
 
 export const metadata: Metadata = {
   title: "D&E Collection - Elegancia Atemporal",
@@ -38,19 +40,22 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-icon.png",
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="es" className={`${playfairDisplay.variable} ${inter.variable}`}>
       <body className={`font-sans antialiased`}>
-        {children}
+        <CartProvider>
+          {children}
+          <CartSidebar />
+          </CartProvider>
         <Analytics />
       </body>
     </html>
-  )
+  );
 }

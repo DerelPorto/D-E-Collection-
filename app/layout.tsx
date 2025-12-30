@@ -52,7 +52,7 @@ export default function RootLayout({
       <body className={`font-sans antialiased`}>
         <CartProvider>
           {children}
-          <CartSidebar />
+          <CartSidebar product={null} />
           </CartProvider>
         <Analytics />
       </body>

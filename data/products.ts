@@ -6,8 +6,8 @@ export const products = [
     category: "mujer",
     tag: "new",
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=800&fit=crop", // Principal
-      "https://images.unsplash.com/photo-1566174053879-31528523f8ae?q=80&w=800&fit=crop", // Detalle
+      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=800&fit=crop",
+      "https://images.unsplash.com/photo-1566174053879-31528523f8ae?q=80&w=800&fit=crop",
     ],
     description: "Elegancia pura en seda roja.",
   },
@@ -29,7 +29,7 @@ export const products = [
     price: 1800,
     category: "mujer",
     images: [
-      "https://images.unsplash.com/photo-1604176354204-9268737828c9?q=80&w=800&fit=crop",
+      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=800&fit=crop",
     ],
     description: "Suavidad y brillo sutil para la oficina.",
   },

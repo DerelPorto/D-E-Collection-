@@ -1,7 +1,13 @@
 // context/CartContext.tsx
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 
 // Definimos cómo se ve un producto en el carrito
 export interface CartItem {
@@ -10,13 +16,14 @@ export interface CartItem {
   price: number;
   image: string;
   quantity: number;
-  size?: string; // Opcional: si quieres manejar tallas
+  size?: string;
 }
 
 interface CartContextType {
   items: CartItem[];
   addToCart: (product: CartItem) => void;
   removeFromCart: (id: number) => void;
+  updateQuantity: (id: number, quantity: number) => void;
   clearCart: () => void;
   total: number;
   cartCount: number;
@@ -54,7 +61,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addToCart = (newItem: CartItem) => {
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.id === newItem.id);
-      
+
       if (existingItem) {
         // Si ya existe, aumentamos la cantidad
         return currentItems.map((item) =>
@@ -69,6 +76,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setIsCartOpen(true); // Abrir el carrito automáticamente al agregar
   };
 
+  const updateQuantity = (id: number, quantity: number) => {
+    setItems(
+      items.map((item) => (item.id === id ? { ...item, quantity } : item))
+    );
+  };
+
   const removeFromCart = (id: number) => {
     setItems((currentItems) => currentItems.filter((item) => item.id !== id));
   };
@@ -78,7 +91,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const toggleCart = () => setIsCartOpen(!isCartOpen);
 
   // Cálculos automáticos
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
@@ -88,6 +104,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         addToCart,
         removeFromCart,
         clearCart,
+        updateQuantity,
         total,
         cartCount,
         isCartOpen,

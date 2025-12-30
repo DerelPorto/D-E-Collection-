@@ -6,14 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2, ShoppingBag, Plus, Minus } from "lucide-react";
 
 export default function CartSidebar() {
-  const cart = useCart();
-  const { isCartOpen, toggleCart, items, removeFromCart, total } = cart;
-
-  const updateQuantity = (id: string | number, quantity: number) => {
-    if (typeof (cart as any).updateQuantity === "function") {
-      (cart as any).updateQuantity(id, quantity);
-    }
-  };
+  const { isCartOpen, toggleCart, items, removeFromCart, updateQuantity, total } = useCart();
 
   const handleCheckout = () => {
     const phoneNumber = "8098647062";

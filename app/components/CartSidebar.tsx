@@ -9,7 +9,7 @@ export default function CartSidebar() {
   const { isCartOpen, toggleCart, items, removeFromCart, updateQuantity, total } = useCart();
 
   const handleCheckout = () => {
-    const phoneNumber = "8098647062";
+    const phoneNumber = "18098647062";
     const productList = items
       .map((item) => `- ${item.name} (x${item.quantity}) - RD$${(item.price * item.quantity).toLocaleString()}`)
       .join("\n");
@@ -177,14 +177,14 @@ export default function CartSidebar() {
 
                 <button
                   onClick={handleCheckout}
-                  className="w-full bg-brand-black text-white py-4 uppercase tracking-widest text-sm font-medium hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
+                  className="w-full bg-brand-black text-black py-4 uppercase tracking-widest text-sm font-medium hover:bg-gray-400 transition-all shadow-lg border-2 border-black hover:border-brand-black hover:shadow-xl active:scale-[0.98]"
                 >
                   Confirmar Pedido
                 </button>
 
                 <button
                   onClick={toggleCart}
-                  className="w-full border-2 border-gray-300 text-gray-700 py-3 uppercase tracking-wider text-sm font-medium hover:bg-gray-100 transition-colors"
+                  className="w-full border-2 border-gray-300 text-gray-700 py-3 uppercase tracking-wider text-sm font-medium hover:bg-gray-100 transition-colors hover:border-brand-black hover:text-brand-black"
                 >
                   Continuar Comprando
                 </button>

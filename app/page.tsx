@@ -15,7 +15,6 @@ export default function HomePage() {
   const [scrolled, setScrolled] = useState(false);
   const { scrollY } = useScroll();
 
-  // 1. CORRECCIÓN: Agregamos el hook para que funcionen los botones del carrito
   const { toggleCart, cartCount } = useCart();
 
   // Animaciones del Hero
@@ -36,9 +35,9 @@ export default function HomePage() {
       <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled ? "bg-cream/95 backdrop-blur-sm shadow-sm" : "bg-transparent"
-        }`}
+        // header="fixed"
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-cream/95 backdrop-blur-sm shadow-sm" : "bg-transparent"
+          }`}
       >
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
@@ -72,7 +71,6 @@ export default function HomePage() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  // 2. CORRECCIÓN: Quité "tex" y cambié "text-3xl" a "text-sm" para que se vea elegante
                   className="font-sans text-sm font-light tracking-wide text-deep-black transition-opacity hover:opacity-60"
                 >
                   {item.name}
@@ -202,7 +200,7 @@ export default function HomePage() {
         </motion.div>
 
         {/* Grid de Productos */}
-        <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => (
             <ProductCard
               key={product.id}

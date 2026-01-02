@@ -9,7 +9,8 @@ export default function CartSidebar() {
   const { isCartOpen, toggleCart, items, removeFromCart, updateQuantity, total } = useCart();
 
   const handleCheckout = () => {
-    const phoneNumber = "8098647062";
+    // const phoneNumber = "8098647062";
+    const phoneNumber = "8494487062";
     const productList = items
       .map((item) => `- ${item.name} (x${item.quantity}) - RD$${(item.price * item.quantity).toLocaleString()}`)
       .join("\n");
@@ -51,8 +52,8 @@ export default function CartSidebar() {
                   {items.length} {items.length === 1 ? 'artículo' : 'artículos'}
                 </p>
               </div>
-              <button 
-                onClick={toggleCart} 
+              <button
+                onClick={toggleCart}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 aria-label="Cerrar carrito"
               >
@@ -71,8 +72,8 @@ export default function CartSidebar() {
                     <p className="font-serif text-xl text-gray-900 mb-2">Tu bolsa está vacía</p>
                     <p className="text-sm text-gray-500">Agrega productos para comenzar tu orden</p>
                   </div>
-                  <button 
-                    onClick={toggleCart} 
+                  <button
+                    onClick={toggleCart}
                     className="mt-4 px-6 py-2 bg-brand-black text-white text-sm uppercase tracking-wider hover:bg-gray-800 transition-colors"
                   >
                     Explorar productos
@@ -91,9 +92,9 @@ export default function CartSidebar() {
                     >
                       {/* Imagen más pequeña y con aspect ratio correcto */}
                       <div className="relative w-20 h-28 bg-white rounded overflow-hidden flex-shrink-0 shadow-sm">
-                        <img 
-                          src={item.image} 
-                          alt={item.name} 
+                        <img
+                          src={item.image}
+                          alt={item.name}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -111,7 +112,7 @@ export default function CartSidebar() {
                         {/* Controles de cantidad */}
                         <div className="flex items-center justify-between mt-2">
                           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded">
-                            <button 
+                            <button
                               onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
                               className="p-1.5 hover:bg-gray-100 transition-colors"
                               aria-label="Disminuir cantidad"
@@ -121,7 +122,7 @@ export default function CartSidebar() {
                             <span className="text-sm font-medium min-w-[24px] text-center">
                               {item.quantity}
                             </span>
-                            <button 
+                            <button
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
                               className="p-1.5 hover:bg-gray-100 transition-colors"
                               aria-label="Aumentar cantidad"
@@ -130,7 +131,7 @@ export default function CartSidebar() {
                             </button>
                           </div>
 
-                          <button 
+                          <button
                             onClick={() => removeFromCart(item.id)}
                             className="text-red-400 hover:text-red-600 transition-colors p-1.5 hover:bg-red-50 rounded"
                             aria-label="Eliminar producto"
@@ -147,7 +148,7 @@ export default function CartSidebar() {
 
             {/* Footer / Checkout */}
             {items.length > 0 && (
-              <motion.div 
+              <motion.div
                 initial={{ y: 100 }}
                 animate={{ y: 0 }}
                 className="p-6 bg-gray-50 border-t border-gray-200 space-y-4"

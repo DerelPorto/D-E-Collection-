@@ -9,8 +9,7 @@ export default function CartSidebar() {
   const { isCartOpen, toggleCart, items, removeFromCart, updateQuantity, total } = useCart();
 
   const handleCheckout = () => {
-    // const phoneNumber = "8098647062";
-    const phoneNumber = "8494487062";
+    const phoneNumber = "8098647062";
     const productList = items
       .map((item) => `- ${item.name} (x${item.quantity}) - RD$${(item.price * item.quantity).toLocaleString()}`)
       .join("\n");

@@ -1,4 +1,4 @@
-import { supabase, SupabaseProduct } from "@/app/lib/supabase";
+import { supabase, SupabaseProduct, getProxyImageUrl } from "@/app/lib/supabase";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "./ProductDetailClient";
 
@@ -33,7 +33,7 @@ export default async function ProductPage({
       description: supabaseProduct.description || '',
       // Mapear el array de objetos de imágenes a un array de strings de URLs
       images: Array.isArray(supabaseProduct.Images) && supabaseProduct.Images.length > 0 
-        ? supabaseProduct.Images.map((img: any) => img.image_url)
+        ? supabaseProduct.Images.map((img: any) => getProxyImageUrl(img.image_url))
         : ['https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800&fit=crop'],
       tag: supabaseProduct.stock <= 3 ? 'Pocas unidades' : undefined
     };

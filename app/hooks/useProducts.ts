@@ -20,14 +20,12 @@ interface UseProductsReturn {
 const POLLING_INTERVAL_MS = 30_000; // fallback cada 30s
 
 async function fetchActiveProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
-    .from('Products')
-    .select('*, Categories(name), Images(image_url)')
-    .eq('is_active', true)
-    .order('created_at', { ascending: false });
-
-  if (error) throw new Error(error.message);
-  return (data as SupabaseProduct[]).map(mapSupabaseProduct);
+  const response = await fetch('/api/products');
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({ error: 'Error al consultar la API de productos' }));
+    throw new Error(errData.error || 'Failed to fetch products from API');
+  }
+  return response.json();
 }
 
 /**
@@ -53,7 +51,9 @@ export function useProducts(): UseProductsReturn {
       setProducts(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      console.error('❌ Error cargando productos:', err);
+      setError(err instanceof Error ? err.message : 'Error de conexión con el catálogo');
+      setProducts([]);
     } finally {
       setIsLoading(false);
     }
@@ -89,16 +89,13 @@ export function useProducts(): UseProductsReturn {
           // Pequeña pausa para asegurar que J.A.R.V.I.S haya terminado de insertar la imagen en la tabla relacionada
           await new Promise((resolve) => setTimeout(resolve, 800));
 
-          // Enriquecer con join de categoría y de imágenes
-          const { data: enriched } = await supabase
-            .from('Products')
-            .select('*, Categories(name), Images(image_url)')
-            .eq('id', rawProduct.id)
-            .single();
-
-          if (!enriched) return;
-
-          const mapped = mapSupabaseProduct(enriched as SupabaseProduct);
+          // Enriquecer con join de categoría y de imágenes llamando a nuestra API Proxy local
+          const response = await fetch(`/api/products/${rawProduct.id}`);
+          if (!response.ok) {
+            console.error('❌ Error al enriquecer producto mediante API local:', response.statusText);
+            return;
+          }
+          const mapped = await response.json() as Product;
 
           setProducts((prev) => {
             const exists = prev.some((p) => p.id === mapped.id);

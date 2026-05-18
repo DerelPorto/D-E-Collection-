@@ -8,9 +8,25 @@ import { X, Trash2, ShoppingBag, Plus, Minus } from "lucide-react";
 export default function CartSidebar() {
   const { isCartOpen, toggleCart, items, removeFromCart, updateQuantity, total } = useCart();
 
+  // Comprobar si hay artículos inválidos en el carrito (no disponibles o superan stock real)
+  const hasInvalidItems = items.some(
+    (item) =>
+      item.isAvailable === false ||
+      (item.availableStock !== undefined && item.availableStock === 0) ||
+      (item.availableStock !== undefined && item.quantity > item.availableStock)
+  );
+
   const handleCheckout = () => {
+    if (hasInvalidItems) return;
     const phoneNumber = "18098647062";
-    const productList = items
+    // Excluir artículos no disponibles o sin stock del mensaje de pedido por seguridad
+    const validItems = items.filter(
+      (item) =>
+        item.isAvailable !== false &&
+        (item.availableStock === undefined || item.availableStock > 0)
+    );
+
+    const productList = validItems
       .map((item) => `- ${item.name} (x${item.quantity}) - RD$${(item.price * item.quantity).toLocaleString()}`)
       .join("\n");
 
@@ -87,25 +103,44 @@ export default function CartSidebar() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: 100 }}
-                      className="flex gap-4 bg-gray-50 p-4 rounded-lg hover:bg-gray-100 transition-colors"
+                      className={`flex gap-4 p-4 rounded-lg transition-colors bg-gray-50 hover:bg-gray-100 ${
+                        item.isAvailable === false ? "opacity-60 border border-red-100" : ""
+                      }`}
                     >
                       {/* Imagen más pequeña y con aspect ratio correcto */}
                       <div className="relative w-20 h-28 bg-white rounded overflow-hidden flex-shrink-0 shadow-sm">
                         <img
                           src={item.image}
                           alt={item.name}
-                          className="w-full h-full object-cover"
+                          className={`w-full h-full object-cover ${
+                            item.isAvailable === false ? "grayscale opacity-50" : ""
+                          }`}
                         />
                       </div>
 
                       <div className="flex-1 flex flex-col justify-between min-w-0">
                         <div>
-                          <h3 className="font-serif text-brand-black text-base mb-1 truncate">
+                          <h3 className={`font-serif text-base mb-1 truncate ${item.isAvailable === false ? 'text-gray-400' : 'text-brand-black'}`}>
                             {item.name}
                           </h3>
-                          <p className="text-sm font-medium text-brand-black">
-                            RD${item.price.toLocaleString()}
-                          </p>
+                          <div className="flex flex-col gap-1">
+                            <p className={`text-sm font-medium ${item.isAvailable === false ? 'text-gray-400 line-through' : 'text-brand-black'}`}>
+                              RD${item.price.toLocaleString()}
+                            </p>
+                            {item.isAvailable === false ? (
+                              <span className="inline-flex items-center text-[10px] font-bold text-red-500 uppercase tracking-wider">
+                                ⚠️ No disponible
+                              </span>
+                            ) : item.availableStock !== undefined && item.availableStock === 0 ? (
+                              <span className="inline-flex items-center text-[10px] font-bold text-red-500 uppercase tracking-wider">
+                                ⚠️ Agotado
+                              </span>
+                            ) : item.availableStock !== undefined && item.quantity > item.availableStock ? (
+                              <span className="inline-flex items-center text-[10px] font-semibold text-amber-600 uppercase tracking-wider">
+                                ⚠️ Límite stock: {item.availableStock} ud.
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
 
                         {/* Controles de cantidad */}
@@ -113,17 +148,29 @@ export default function CartSidebar() {
                           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded">
                             <button
                               onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                              className="p-1.5 hover:bg-gray-100 transition-colors"
+                              disabled={item.isAvailable === false}
+                              className={`p-1.5 transition-colors ${
+                                item.isAvailable === false ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-100"
+                              }`}
                               aria-label="Disminuir cantidad"
                             >
                               <Minus className="w-3.5 h-3.5 text-gray-600" />
                             </button>
-                            <span className="text-sm font-medium min-w-[24px] text-center">
+                            <span className={`text-sm font-medium min-w-[24px] text-center ${item.isAvailable === false ? "opacity-40" : ""}`}>
                               {item.quantity}
                             </span>
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              className="p-1.5 hover:bg-gray-100 transition-colors"
+                              disabled={
+                                item.isAvailable === false ||
+                                (item.availableStock !== undefined && item.quantity >= item.availableStock)
+                              }
+                              className={`p-1.5 transition-colors ${
+                                item.isAvailable === false ||
+                                (item.availableStock !== undefined && item.quantity >= item.availableStock)
+                                  ? "opacity-40 cursor-not-allowed"
+                                  : "hover:bg-gray-100"
+                              }`}
                               aria-label="Aumentar cantidad"
                             >
                               <Plus className="w-3.5 h-3.5 text-gray-600" />
@@ -175,9 +222,22 @@ export default function CartSidebar() {
                   Los impuestos se calculan al confirmar la orden
                 </p>
 
+                {/* Alerta de productos no disponibles */}
+                {hasInvalidItems && (
+                  <div className="p-3 mb-2 rounded bg-red-50 border border-red-200 text-red-700 text-xs flex flex-col gap-1">
+                    <span className="font-bold flex items-center gap-1">⚠️ Bolsa no válida</span>
+                    <span>Algunos artículos de tu bolsa ya no están disponibles o superan el stock real. Por favor, elimínalos o reduce sus unidades.</span>
+                  </div>
+                )}
+
                 <button
                   onClick={handleCheckout}
-                  className="w-full bg-brand-black text-black py-4 uppercase tracking-widest text-sm font-medium hover:bg-gray-400 transition-all shadow-lg border-2 border-black hover:border-brand-black hover:shadow-xl active:scale-[0.98]"
+                  disabled={hasInvalidItems}
+                  className={`w-full py-4 uppercase tracking-widest text-sm font-medium transition-all shadow-lg border-2 active:scale-[0.98] ${
+                    hasInvalidItems
+                      ? "bg-gray-200 border-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                      : "bg-brand-black text-black border-black hover:bg-gray-400 hover:border-brand-black hover:shadow-xl"
+                  }`}
                 >
                   Confirmar Pedido
                 </button>

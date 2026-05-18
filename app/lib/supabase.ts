@@ -36,6 +36,17 @@ export interface Product {
   isNew?: boolean;
 }
 
+/** Convierte URLs de Supabase Storage a nuestra ruta de proxy local si es necesario */
+export function getProxyImageUrl(url: string | null | undefined): string {
+  if (!url) return 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800&fit=crop';
+  const matchStr = '/storage/v1/object/public/';
+  if (url.includes(matchStr)) {
+    const parts = url.split(matchStr);
+    return `/api/storage/${parts[1]}`;
+  }
+  return url;
+}
+
 /** Convierte un producto de Supabase al formato que usa el frontend */
 export function mapSupabaseProduct(p: SupabaseProduct): Product {
   // Tomar la primera imagen del arreglo si existe, de lo contrario usar placeholder
@@ -45,7 +56,7 @@ export function mapSupabaseProduct(p: SupabaseProduct): Product {
     id: p.id,
     name: p.title,
     price: p.price,
-    image: firstImage || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800&fit=crop',
+    image: getProxyImageUrl(firstImage),
     category: p.Categories?.name?.toLowerCase() || 'colección',
     stock: p.stock,
     description: p.description || '',

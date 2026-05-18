@@ -17,6 +17,8 @@ export interface CartItem {
   image: string;
   quantity: number;
   size?: string;
+  isAvailable?: boolean;
+  availableStock?: number;
 }
 
 interface CartContextType {
@@ -38,18 +40,80 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
+  // Función para validar el estado actual de los artículos del carrito contra la base de datos
+  const validateCart = async (currentItems: CartItem[]) => {
+    if (currentItems.length === 0) return;
+    try {
+      const res = await fetch("/api/products");
+      if (!res.ok) throw new Error("Fallo al obtener el catálogo de productos");
+      const dbProducts: any[] = await res.json();
+
+      setItems(prevItems => {
+        let changed = false;
+        const validated = prevItems.map(item => {
+          // Buscar el producto en la base de datos por ID
+          const dbProd = dbProducts.find(p => p.id === item.id);
+
+          if (!dbProd) {
+            // El producto ya no existe en el catálogo o no está activo
+            if (item.isAvailable !== false) {
+              changed = true;
+              return { ...item, isAvailable: false, availableStock: 0 };
+            }
+            return item;
+          }
+
+          // Producto activo: validar stock y precio
+          const isAvailable = true;
+          const availableStock = dbProd.stock;
+          const currentPrice = dbProd.price;
+
+          if (
+            item.isAvailable !== isAvailable ||
+            item.availableStock !== availableStock ||
+            item.price !== currentPrice
+          ) {
+            changed = true;
+            return {
+              ...item,
+              isAvailable,
+              availableStock,
+              price: currentPrice, // Sincronizar precio si cambió
+            };
+          }
+
+          return item;
+        });
+
+        return changed ? validated : prevItems;
+      });
+    } catch (error) {
+      console.error("Error al validar el estado del carrito:", error);
+    }
+  };
+
   // Cargar carrito del LocalStorage al iniciar (para no perder datos si recarga)
   useEffect(() => {
     setIsMounted(true);
     const savedCart = localStorage.getItem("de-cart");
     if (savedCart) {
       try {
-        setItems(JSON.parse(savedCart));
+        const parsed = JSON.parse(savedCart);
+        setItems(parsed);
+        // Validar stock y disponibilidad inmediatamente al cargar
+        validateCart(parsed);
       } catch (e) {
         console.error("Error cargando carrito", e);
       }
     }
   }, []);
+
+  // Validar el carrito cada vez que el usuario lo abre
+  useEffect(() => {
+    if (isMounted && isCartOpen && items.length > 0) {
+      validateCart(items);
+    }
+  }, [isCartOpen]);
 
   // Guardar en LocalStorage cada vez que cambia
   useEffect(() => {
@@ -90,12 +154,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const toggleCart = () => setIsCartOpen(!isCartOpen);
 
-  // Cálculos automáticos
+  // Cálculos automáticos (se excluyen los productos no disponibles)
   const total = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + (item.isAvailable !== false ? item.price * item.quantity : 0),
     0
   );
-  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const cartCount = items.reduce(
+    (sum, item) => sum + (item.isAvailable !== false ? item.quantity : 0),
+    0
+  );
 
   return (
     <CartContext.Provider

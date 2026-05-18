@@ -1,22 +1,9 @@
 import type React from "react";
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
 import { CartProvider } from "@/context/CartContext";
 import CartSidebar from "@/app/components/CartSidebar";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
-
-const playfairDisplay = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-serif",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "D&E Collection - Elegancia Atemporal",
@@ -48,12 +35,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${playfairDisplay.variable} ${inter.variable}`}>
+    <html lang="es">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+      </head>
       <body className={`font-sans antialiased`}>
         <CartProvider>
           {children}
           <CartSidebar />
-          </CartProvider>
+        </CartProvider>
         <Analytics />
       </body>
     </html>

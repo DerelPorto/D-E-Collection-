@@ -405,7 +405,7 @@ export default function HomePage() {
       >
         <div className="mx-auto max-w-4xl px-6">
           <div className="grid grid-cols-3 gap-8 divide-x"
-            style={{ divideColor: "var(--border)" }}
+            style={{ borderColor: "var(--border)" }}
           >
             <motion.div
               initial={{ opacity: 0, y: 20 }}

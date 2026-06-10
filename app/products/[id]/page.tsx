@@ -24,7 +24,6 @@ export default async function ProductPage({
 
     console.log("Product data fetched:", JSON.stringify(supabaseProduct, null, 2));
 
-    // Adaptar los datos al formato que espera el componente cliente
     const mappedProduct = {
       id: supabaseProduct.id,
       name: supabaseProduct.title,
@@ -35,7 +34,8 @@ export default async function ProductPage({
       images: Array.isArray(supabaseProduct.Images) && supabaseProduct.Images.length > 0 
         ? supabaseProduct.Images.map((img: any) => getProxyImageUrl(img.image_url))
         : ['https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800&fit=crop'],
-      tag: supabaseProduct.stock <= 3 ? 'Pocas unidades' : undefined
+      tag: supabaseProduct.stock <= 3 ? (supabaseProduct.stock === 0 ? 'Agotado' : 'Pocas unidades') : undefined,
+      stock: supabaseProduct.stock
     };
 
     return <ProductDetailClient product={mappedProduct} />;

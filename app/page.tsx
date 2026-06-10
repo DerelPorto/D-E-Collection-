@@ -517,6 +517,7 @@ export default function HomePage() {
                   image={product.image}
                   category={product.category}
                   tag={product.tag}
+                  stock={product.stock}
                 />
               </motion.div>
             ))}

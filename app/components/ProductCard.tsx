@@ -13,9 +13,10 @@ interface ProductCardProps {
   image: string;
   category: string;
   tag?: string;
+  stock?: number;
 }
 
-export const ProductCard = ({ id, name, price, image, category, tag }: ProductCardProps) => {
+export const ProductCard = ({ id, name, price, image, category, tag, stock = 1 }: ProductCardProps) => {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [hovered, setHovered] = useState(false);
 
@@ -57,20 +58,31 @@ export const ProductCard = ({ id, name, price, image, category, tag }: ProductCa
 
           {/* Tags */}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-            {tag === "sale" && (
+            {stock === 0 ? (
               <span
-                className="font-sans text-[9px] tracking-luxury uppercase px-2.5 py-1"
-                style={{ background: "#c0392b", color: "#fff" }}
+                className="font-sans text-[9px] tracking-luxury uppercase px-2.5 py-1 font-bold"
+                style={{ background: "#7f8c8d", color: "#fff" }}
               >
-                Sale
+                Agotado
               </span>
+            ) : (
+              <>
+                {tag === "sale" && (
+                  <span
+                    className="font-sans text-[9px] tracking-luxury uppercase px-2.5 py-1"
+                    style={{ background: "#c0392b", color: "#fff" }}
+                  >
+                    Sale
+                  </span>
+                )}
+                <span
+                  className="font-sans text-[9px] tracking-luxury uppercase px-2.5 py-1"
+                  style={{ background: "var(--gold)", color: "var(--bg-primary)" }}
+                >
+                  Pre-Order
+                </span>
+              </>
             )}
-            <span
-              className="font-sans text-[9px] tracking-luxury uppercase px-2.5 py-1"
-              style={{ background: "var(--gold)", color: "var(--bg-primary)" }}
-            >
-              Pre-Order
-            </span>
           </div>
 
           {/* Wishlist button */}
@@ -109,17 +121,31 @@ export const ProductCard = ({ id, name, price, image, category, tag }: ProductCa
                 </Link>
 
                 {/* Buy via WhatsApp */}
-                <button
-                  onClick={handleBuy}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 font-sans text-[10px] tracking-wide uppercase transition-all"
-                  style={{
-                    background: "var(--gold)",
-                    color: "var(--bg-primary)",
-                  }}
-                >
-                  <ShoppingBag className="h-3 w-3" />
-                  <span>Reservar</span>
-                </button>
+                {stock === 0 ? (
+                  <button
+                    disabled
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 font-sans text-[10px] tracking-wide uppercase transition-all opacity-50 cursor-not-allowed"
+                    style={{
+                      background: "#2c3e50",
+                      color: "var(--white)",
+                    }}
+                  >
+                    <ShoppingBag className="h-3 w-3" />
+                    <span>Sin Stock</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleBuy}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 font-sans text-[10px] tracking-wide uppercase transition-all hover:brightness-110 active:scale-[0.98]"
+                    style={{
+                      background: "var(--gold)",
+                      color: "var(--bg-primary)",
+                    }}
+                  >
+                    <ShoppingBag className="h-3 w-3" />
+                    <span>Reservar</span>
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

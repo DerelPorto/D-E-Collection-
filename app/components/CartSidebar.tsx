@@ -1,12 +1,33 @@
-// components/CartSidebar.tsx
 "use client";
 
+import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2, ShoppingBag, Plus, Minus } from "lucide-react";
+import { supabase } from "@/app/lib/supabase";
 
 export default function CartSidebar() {
   const { isCartOpen, toggleCart, items, removeFromCart, updateQuantity, total } = useCart();
+  const [adminPhone, setAdminPhone] = useState("18098647062");
+
+  useEffect(() => {
+    async function loadTenantPhone() {
+      try {
+        const { data } = await supabase
+          .from("Tenants")
+          .select("admin_phone")
+          .eq("is_active", true)
+          .limit(1)
+          .single();
+        if (data && data.admin_phone) {
+          setAdminPhone(data.admin_phone.replace(/\D/g, ""));
+        }
+      } catch (err) {
+        console.error("Error loading tenant phone:", err);
+      }
+    }
+    loadTenantPhone();
+  }, []);
 
   // Comprobar si hay artículos inválidos en el carrito (no disponibles o superan stock real)
   const hasInvalidItems = items.some(
@@ -18,7 +39,7 @@ export default function CartSidebar() {
 
   const handleCheckout = () => {
     if (hasInvalidItems) return;
-    const phoneNumber = "18098647062";
+    
     // Excluir artículos no disponibles o sin stock del mensaje de pedido por seguridad
     const validItems = items.filter(
       (item) =>
@@ -30,8 +51,12 @@ export default function CartSidebar() {
       .map((item) => `- ${item.name} (x${item.quantity}) - RD$${(item.price * item.quantity).toLocaleString()}`)
       .join("\n");
 
-    const message = `Hola D&E, quiero confirmar este pedido de la web:\n\n${productList}\n\n*TOTAL: RD$${total.toLocaleString()}*\n\nQuedo atento para el pago y envío.`;
-    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    const payload = {
+      items: validItems.map(item => ({ id: item.id, qty: item.quantity }))
+    };
+
+    const message = `Hola D&E, quiero confirmar este pedido de la web:\n\n${productList}\n\n*TOTAL: RD$${total.toLocaleString()}*\n\nQuedo atento para el pago y envío.\n\n[ORDEN_WEB:${JSON.stringify(payload)}]`;
+    const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
   };
 

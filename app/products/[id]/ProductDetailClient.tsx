@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, Check, Truck, RotateCcw, Shield, 
   Star, Heart, Share2, ChevronRight, Minus, Plus,
-  Ruler, Info, ZoomIn
+  Ruler, Info, ZoomIn, X
 } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import { supabase } from "@/app/lib/supabase";
 
 interface Product {
   id: number;
@@ -18,6 +19,7 @@ interface Product {
   description: string;
   images: string[];
   tag?: string;
+  stock?: number;
 }
 
 export default function ProductDetailClient({ product }: { product: Product }) {
@@ -29,6 +31,36 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
   const [isZoomed, setIsZoomed] = useState(false);
+  const [adminPhone, setAdminPhone] = useState("18098647062");
+
+  useEffect(() => {
+    async function loadTenantPhone() {
+      try {
+        const { data } = await supabase
+          .from("Tenants")
+          .select("admin_phone")
+          .eq("is_active", true)
+          .limit(1)
+          .single();
+        if (data && data.admin_phone) {
+          setAdminPhone(data.admin_phone.replace(/\D/g, ""));
+        }
+      } catch (err) {
+        console.error("Error loading tenant phone:", err);
+      }
+    }
+    loadTenantPhone();
+  }, []);
+
+  const handleBuyNow = () => {
+    const productList = `- ${product.name} (x${quantity}) [Talla: ${selectedSize}] - RD$${(product.price * quantity).toLocaleString()}`;
+    const payload = {
+      items: [{ id: product.id, qty: quantity }]
+    };
+    const message = `Hola D&E, quiero comprar este artículo directamente desde la web:\n\n${productList}\n\n*TOTAL: RD$${(product.price * quantity).toLocaleString()}*\n\nQuedo atento para coordinar el pago y envío.\n\n[ORDEN_WEB:${JSON.stringify(payload)}]`;
+    const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+  };
 
   const sizes = ["XS", "S", "M", "L", "XL"];
   const tabs = [
@@ -255,7 +287,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 </div>
               </div>
 
-              {/* Cantidad */}
               <div>
                 <label className="text-sm font-semibold text-gray-900 mb-3 block">
                   Cantidad
@@ -264,25 +295,41 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   <div className="flex items-center border-2 border-gray-200 rounded-lg overflow-hidden">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="p-3 hover:bg-gray-100 transition-colors active:bg-gray-200"
+                      disabled={product.stock === 0}
+                      className="p-3 hover:bg-gray-100 transition-colors active:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
                     <span className="px-6 font-semibold text-gray-900 min-w-[3rem] text-center">
-                      {quantity}
+                      {product.stock === 0 ? 0 : quantity}
                     </span>
                     <button
                       onClick={() => setQuantity(quantity + 1)}
-                      className="p-3 hover:bg-gray-100 transition-colors active:bg-gray-200"
+                      disabled={product.stock === 0 || (product.stock !== undefined && quantity >= product.stock)}
+                      className="p-3 hover:bg-gray-100 transition-colors active:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
                   <div className="flex items-center gap-1.5 text-sm">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                    <span className="text-gray-600">
-                      Solo quedan <span className="font-bold text-orange-600">8 unidades</span>
-                    </span>
+                    {product.stock === 0 ? (
+                      <>
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        <span className="text-red-600 font-semibold">Agotado</span>
+                      </>
+                    ) : product.stock !== undefined && product.stock <= 5 ? (
+                      <>
+                        <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                        <span className="text-gray-600">
+                          Solo quedan <span className="font-bold text-orange-600">{product.stock} unidades</span>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-green-600 font-semibold">Disponible</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -291,15 +338,20 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               <div className="space-y-3 pt-2">
                 <motion.button
                   onClick={handleAddToCart}
-                  whileTap={{ scale: 0.98 }}
+                  disabled={product.stock === 0}
+                  whileTap={product.stock === 0 ? {} : { scale: 0.98 }}
                   className={`w-full py-4 rounded-lg text-sm font-bold tracking-wide transition-all flex items-center justify-center gap-2 ${
-                    isAdded 
-                      ? 'bg-green-600 text-white shadow-lg' 
-                      : 'bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl'
+                    product.stock === 0
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : isAdded 
+                        ? 'bg-green-600 text-white shadow-lg' 
+                        : 'bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl'
                   }`}
                 >
                   <AnimatePresence mode="wait">
-                    {isAdded ? (
+                    {product.stock === 0 ? (
+                      <span key="outofstock">Agotado</span>
+                    ) : isAdded ? (
                       <motion.div
                         key="added"
                         initial={{ scale: 0, rotate: -180 }}
@@ -322,21 +374,41 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   </AnimatePresence>
                 </motion.button>
 
-                <button className="w-full py-4 border-2 border-black text-black rounded-lg text-sm font-bold hover:bg-black hover:text-white transition-all">
-                  Comprar Ahora
+                <button 
+                  onClick={handleBuyNow}
+                  disabled={product.stock === 0}
+                  className={`w-full py-4 border-2 rounded-lg text-sm font-bold transition-all active:scale-[0.98] ${
+                    product.stock === 0
+                      ? 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50'
+                      : 'border-black text-black hover:bg-black hover:text-white'
+                  }`}
+                >
+                  {product.stock === 0 ? 'Sin Stock' : 'Comprar Ahora'}
                 </button>
               </div>
 
               {/* Stock Status */}
-              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Check className="w-5 h-5 text-green-600" />
+              {product.stock === 0 ? (
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <X className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-red-800">Agotado temporalmente</p>
+                    <p className="text-xs text-red-700">Este producto no está disponible para envío</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-green-800">En stock y listo para enviar</p>
-                  <p className="text-xs text-green-700">Procesa tu pedido hoy mismo</p>
+              ) : (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Check className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-green-800">En stock y listo para enviar</p>
+                    <p className="text-xs text-green-700">Procesa tu pedido hoy mismo</p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Trust Signals */}
               <div className="bg-gray-50 rounded-lg p-5 space-y-4 border border-gray-200">

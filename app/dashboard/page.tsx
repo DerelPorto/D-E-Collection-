@@ -505,6 +505,53 @@ export default function Dashboard() {
         }, 3000);
     };
 
+    // --- 📊 CALCULAR VENTAS SEMANALES EN VIVO ---
+    const obtenerDatosSemanales = () => {
+        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const ventasPorDia: Record<string, number> = {
+            'Lun': 0, 'Mar': 0, 'Mié': 0, 'Jue': 0, 'Vie': 0, 'Sáb': 0, 'Dom': 0
+        };
+
+        // Agrupar y sumar el total de órdenes por día de la semana
+        orders.forEach(order => {
+            if (!order.created_at) return;
+            const date = new Date(order.created_at);
+            const nombreDia = diasSemana[date.getDay()];
+            if (ventasPorDia[nombreDia] !== undefined) {
+                ventasPorDia[nombreDia] += order.total;
+            }
+        });
+
+        // Encontrar valor máximo para escalar la altura de las barras
+        const maxVenta = Math.max(...Object.values(ventasPorDia), 1);
+        const ordenDias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        
+        const hoyIdx = new Date().getDay();
+        const hoyNombre = diasSemana[hoyIdx];
+
+        return ordenDias.map(dia => {
+            const totalDia = ventasPorDia[dia];
+            // Escalar de 0 a 100% de la barra
+            const porcentaje = Math.min(Math.round((totalDia / maxVenta) * 100), 100);
+
+            let color = 'bg-neutral-800';
+            if (dia === hoyNombre) {
+                color = 'bg-gradient-to-t from-amber-500 to-yellow-400 shadow-xl shadow-amber-500/20';
+            } else if (totalDia > 0) {
+                color = 'bg-gradient-to-t from-orange-600 to-amber-500 shadow-lg shadow-amber-500/10';
+            }
+
+            return {
+                dia,
+                val: porcentaje,
+                total: totalDia,
+                color
+            };
+        });
+    };
+
+    const datosSemanales = obtenerDatosSemanales();
+
     // --- ⌛ PANTALLA DE CARGA ---
     if (loading) {
         return (
@@ -636,17 +683,9 @@ export default function Dashboard() {
                         </div>
                         {/* Barras de Gráfico Visuales con Tailwind */}
                         <div className="flex items-end justify-between h-48 pt-6 px-4 border-b border-neutral-800">
-                            {[
-                                { dia: 'Lun', val: 35, color: 'bg-neutral-800' },
-                                { dia: 'Mar', val: 50, color: 'bg-neutral-800' },
-                                { dia: 'Mié', val: 75, color: 'bg-gradient-to-t from-orange-600 to-amber-500' },
-                                { dia: 'Jue', val: 40, color: 'bg-neutral-800' },
-                                { dia: 'Vie', val: 95, color: 'bg-gradient-to-t from-orange-600 to-amber-500 shadow-lg shadow-amber-500/10' },
-                                { dia: 'Sáb', val: 120, color: 'bg-gradient-to-t from-amber-500 to-yellow-400 shadow-xl shadow-amber-500/20' },
-                                { dia: 'Dom', val: 80, color: 'bg-neutral-800' },
-                            ].map((b, i) => (
+                            {datosSemanales.map((b, i) => (
                                 <div key={i} className="flex flex-col items-center gap-2 w-10">
-                                    <div className="text-[10px] text-neutral-500 font-mono font-bold">${(b.val * 350).toLocaleString()}</div>
+                                    <div className="text-[10px] text-neutral-500 font-mono font-bold">RD${b.total.toLocaleString()}</div>
                                     <motion.div
                                         initial={{ height: 0 }}
                                         animate={{ height: `${b.val * 1.2}px` }}

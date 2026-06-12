@@ -261,7 +261,7 @@ export default function CartSidebar() {
                   className={`w-full py-4 uppercase tracking-widest text-sm font-medium transition-all shadow-lg border-2 active:scale-[0.98] ${
                     hasInvalidItems
                       ? "bg-gray-200 border-gray-200 text-gray-400 cursor-not-allowed shadow-none"
-                      : "bg-brand-black text-black border-black hover:bg-gray-400 hover:border-brand-black hover:shadow-xl"
+                      : "bg-brand-black text-white border-black hover:bg-gray-800 hover:border-brand-black hover:shadow-xl"
                   }`}
                 >
                   Confirmar Pedido

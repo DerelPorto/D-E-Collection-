@@ -470,6 +470,20 @@ export default function Dashboard() {
 
         setActionLoading(`delete_${id}`);
         try {
+            // Primero eliminar las referencias de imágenes asociadas
+            const { error: imgError } = await supabase
+                .from('Images')
+                .delete()
+                .eq('product_id', id);
+
+            if (imgError) {
+                console.error("Error al borrar imágenes:", imgError.message);
+                showToast("No se pudieron borrar las imágenes asociadas.", "error");
+                setActionLoading(null);
+                return;
+            }
+
+            // Ahora eliminar el producto
             const { error } = await supabase
                 .from('Products')
                 .delete()

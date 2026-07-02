@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowLeft, Check, Truck, RotateCcw, Shield, 
+  Check, Truck, RotateCcw, Shield, 
   Star, Heart, Share2, ChevronRight, Minus, Plus,
-  Ruler, Info, ZoomIn, X
+  Ruler, Info, ZoomIn, X, ShoppingBag, ArrowLeft
 } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
@@ -22,8 +22,15 @@ interface Product {
   stock?: number;
 }
 
+const NAV_LINKS = [
+  { name: "Colección", href: "/shop/all" },
+  { name: "Hombre", href: "/shop/hombre" },
+  { name: "Mujer", href: "/shop/mujer" },
+  { name: "Rebajas", href: "/shop/rebajas" },
+];
+
 export default function ProductDetailClient({ product }: { product: Product }) {
-  const { addToCart } = useCart();
+  const { addToCart, toggleCart, cartCount } = useCart();
   const [mainImage, setMainImage] = useState(product.images[0]);
   const [isAdded, setIsAdded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -57,7 +64,8 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     const payload = {
       items: [{ id: product.id, qty: quantity }]
     };
-    const message = `Hola D&E, quiero comprar este artículo directamente desde la web:\n\n${productList}\n\n*TOTAL: RD$${(product.price * quantity).toLocaleString()}*\n\nQuedo atento para coordinar el pago y envío.\n\n[ORDEN_WEB:${JSON.stringify(payload)}]`;
+    const payloadEncoded = window.btoa(JSON.stringify(payload));
+    const message = `Hola D&E, quiero comprar este artículo directamente desde la web:\n\n${productList}\n\n*TOTAL: RD$${(product.price * quantity).toLocaleString()}*\n\nQuedo atento para coordinar el pago y envío.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n[ORDEN_WEB:${payloadEncoded}]`;
     const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
   };
@@ -83,35 +91,113 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Breadcrumb mejorado */}
-      <div className="bg-gray-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
-          <nav className="flex items-center gap-2 text-sm">
-            <Link href="/" className="text-gray-500 hover:text-gray-900 transition-colors">
+    <div className="min-h-screen relative overflow-hidden" style={{ background: "var(--bg-primary)", color: "var(--white)" }}>
+      {/* Glow ambiental */}
+      <div className="bg-glow" />
+
+      {/* ═══ MENÚ DE NAVEGACIÓN PREMIUM ════════════════════════════════════════ */}
+      <nav 
+        className="fixed top-0 left-0 right-0 z-50 border-b transition-all duration-300"
+        style={{
+          background: "rgba(8,8,15,0.85)",
+          backdropFilter: "blur(24px)",
+          borderColor: "rgba(201,168,76,0.12)"
+        }}
+      >
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="flex h-20 items-center justify-between">
+            {/* Logo */}
+            <Link href="/" className="flex-shrink-0 group">
+              <div className="flex items-baseline gap-0.5">
+                <span className="font-serif text-2xl font-light tracking-wider text-white">
+                  D&E
+                </span>
+                <span className="font-sans text-[9px] tracking-luxury ml-2 mb-1" style={{ color: "var(--gold)" }}>
+                  COLLECTION
+                </span>
+              </div>
+            </Link>
+
+            {/* Desktop Nav Links */}
+            <div className="hidden items-center gap-8 md:flex">
+              {NAV_LINKS.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className="relative font-sans text-xs uppercase tracking-luxury group text-white-60"
+                  style={{ color: "var(--white-60)" }}
+                >
+                  <span className="transition-colors duration-300 hover:text-white">
+                    {item.name}
+                  </span>
+                  <span
+                    className="absolute -bottom-1 left-0 h-px w-0 group-hover:w-full transition-all duration-300"
+                    style={{ background: "var(--gold)" }}
+                  />
+                </Link>
+              ))}
+            </div>
+
+            {/* Botón Carrito */}
+            <div className="flex items-center gap-5">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleCart}
+                className="relative p-2.5 rounded-full border border-white/5 bg-white/5 text-white/80 hover:text-white hover:border-gold/30 hover:bg-gold/5 transition-all duration-300"
+              >
+                <ShoppingBag className="h-4.5 w-4.5" />
+                {cartCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full text-[9px] font-bold text-neutral-950"
+                    style={{ background: "var(--gold)" }}
+                  >
+                    {cartCount}
+                  </motion.span>
+                )}
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Contenedor Principal (pt-28 para espaciar el nav fijo) */}
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-28 pb-20 relative z-10">
+        
+        {/* Breadcrumb premium */}
+        <div className="mb-8 flex items-center justify-between">
+          <nav className="flex items-center gap-2 text-xs uppercase tracking-wider text-white-60">
+            <Link href="/" className="hover:text-white transition-colors">
               Inicio
             </Link>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-            <Link href="/" className="text-gray-500 hover:text-gray-900 transition-colors">
+            <ChevronRight className="w-3.5 h-3.5" style={{ color: "var(--gold)" }} />
+            <Link href={`/shop/${product.category.toLowerCase()}`} className="hover:text-white transition-colors">
               {product.category}
             </Link>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-900 font-medium truncate max-w-[200px]">
+            <ChevronRight className="w-3.5 h-3.5" style={{ color: "var(--gold)" }} />
+            <span className="font-semibold text-white truncate max-w-[150px]">
               {product.name}
             </span>
           </nav>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* GALERÍA - 1 de 2 columnas */}
-          <div>
-            <div className="sticky top-4 max-w-[500px] mx-auto">
-              {/* Imagen principal con zoom */}
-              <div className="relative mb-4">
+          <Link href="/shop/all" className="text-xs uppercase tracking-luxury flex items-center gap-1.5 hover:text-white transition-colors text-white-60">
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Volver a la Tienda
+          </Link>
+        </div>
+
+        {/* Retícula del detalle */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+          
+          {/* GALERÍA - 5/12 columnas */}
+          <div className="lg:col-span-5 flex flex-col items-center">
+            <div className="sticky top-28 w-full max-w-[450px]">
+              {/* Contenedor Imagen Principal con marco de lujo */}
+              <div className="relative mb-5 rounded-2xl overflow-hidden border border-white/10 bg-white/5 shadow-2xl group">
                 <motion.div
-                  className="relative w-full aspect-[3/4] max-h-[500px] bg-gray-100 rounded-lg overflow-hidden group cursor-zoom-in"
+                  className="relative w-full aspect-[3/4] cursor-zoom-in overflow-hidden"
                   onHoverStart={() => setIsZoomed(true)}
                   onHoverEnd={() => setIsZoomed(false)}
                 >
@@ -119,43 +205,43 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                     src={mainImage}
                     alt={product.name}
                     className="w-full h-full object-cover"
-                    animate={{ scale: isZoomed ? 1.5 : 1 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    animate={{ scale: isZoomed ? 1.4 : 1 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
                   />
                   
                   {/* Badges superiores */}
                   <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
                     {product.tag && (
-                      <span className="bg-black text-white text-xs px-3 py-1.5 rounded-full font-semibold shadow-lg">
+                      <span className="bg-gradient-to-r from-amber-500 to-yellow-400 text-neutral-950 text-[10px] uppercase tracking-wider font-extrabold px-3 py-1 rounded-full shadow-lg shadow-amber-500/10">
                         {product.tag}
                       </span>
                     )}
-                    <span className="bg-green-500 text-white text-xs px-3 py-1.5 rounded-full font-semibold flex items-center gap-1 shadow-lg">
-                      <Check className="w-3 h-3" />
+                    <span className="glass bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] uppercase tracking-wider font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                      <Check className="w-3 h-3 text-emerald-400" />
                       Envío Gratis
                     </span>
                   </div>
 
-                  {/* Acciones flotantes */}
-                  <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+                  {/* Acciones flotantes premium (glassmorphism) */}
+                  <div className="absolute top-4 right-4 flex flex-col gap-2.5 z-10">
                     <motion.button
-                      whileHover={{ scale: 1.1 }}
+                      whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setIsFavorite(!isFavorite)}
-                      className="w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center transition-colors"
+                      className="w-10 h-10 glass rounded-full flex items-center justify-center hover:border-gold/40 hover:text-gold transition-all duration-300"
                     >
                       <Heart 
-                        className={`w-5 h-5 transition-colors ${
-                          isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'
+                        className={`w-4.5 h-4.5 transition-colors ${
+                          isFavorite ? 'fill-red-500 text-red-500' : 'text-white/80'
                         }`}
                       />
                     </motion.button>
                     <motion.button
-                      whileHover={{ scale: 1.1 }}
+                      whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      className="w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center"
+                      className="w-10 h-10 glass rounded-full flex items-center justify-center hover:border-gold/40 hover:text-gold transition-all duration-300"
                     >
-                      <Share2 className="w-5 h-5 text-gray-600" />
+                      <Share2 className="w-4.5 h-4.5 text-white/80" />
                     </motion.button>
                   </div>
 
@@ -166,30 +252,33 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
-                        className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-sm text-white text-xs px-4 py-2 rounded-full flex items-center gap-2"
+                        className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md text-white/85 text-[10px] uppercase tracking-luxury px-4 py-2 rounded-full border border-white/5 flex items-center gap-2"
                       >
-                        <ZoomIn className="w-3.5 h-3.5" />
-                        Mueve el cursor para explorar
+                        <ZoomIn className="w-3.5 h-3.5" style={{ color: "var(--gold)" }} />
+                        Explorar Detalles
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </motion.div>
               </div>
 
-              {/* Thumbnails mejorados */}
+              {/* Miniaturas */}
               {product.images.length > 1 && (
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-3 justify-center overflow-x-auto pb-2 scrollbar-hide">
                   {product.images.map((img, index) => (
                     <motion.button
                       key={index}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setMainImage(img)}
-                      className={`relative w-20 h-24 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                      className={`relative w-16 h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
                         mainImage === img
-                          ? "border-black ring-2 ring-black ring-offset-2"
-                          : "border-gray-200 hover:border-gray-400 opacity-60 hover:opacity-100"
+                          ? "borderColor: var(--gold) border-[#c9a84c] ring-2 ring-[#c9a84c]/20"
+                          : "border-white/5 hover:border-white/20 opacity-50 hover:opacity-100 bg-[#0f0f1a]"
                       }`}
+                      style={{
+                        borderColor: mainImage === img ? "var(--gold)" : "rgba(255,255,255,0.05)"
+                      }}
                     >
                       <img 
                         src={img} 
@@ -197,7 +286,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                         className="w-full h-full object-cover" 
                       />
                       {mainImage === img && (
-                        <div className="absolute inset-0 bg-black/10" />
+                        <div className="absolute inset-0 bg-[#c9a84c]/10" />
                       )}
                     </motion.button>
                   ))}
@@ -206,64 +295,80 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             </div>
           </div>
 
-          {/* INFORMACIÓN - 1 de 2 columnas */}
-          <div>
-            <div className="space-y-6">
-              {/* Header */}
+          {/* INFORMACIÓN - 7/12 columnas */}
+          <div className="lg:col-span-7 flex flex-col justify-start">
+            <div className="space-y-7 max-w-2xl">
+              
+              {/* Categoría, SKU y Título */}
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-xs uppercase tracking-luxury font-bold" style={{ color: "var(--gold)" }}>
                     {product.category}
                   </span>
-                  <span className="text-xs text-gray-300">•</span>
-                  <span className="text-xs text-gray-500">SKU: DE-{product.id}</span>
+                  <span className="text-white/20">•</span>
+                  <span className="text-xs text-white-400 font-mono tracking-wider" style={{ color: "var(--white-60)" }}>
+                    SKU: DE-{product.id}
+                  </span>
                 </div>
                 
-                <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-3 leading-tight">
+                <h1 className="font-serif text-3.5xl md:text-5xl text-white mb-4 leading-tight tracking-wide font-light">
                   {product.name}
                 </h1>
 
-                {/* Rating */}
-                <div className="flex items-center gap-3 mb-4">
+                {/* Reseñas */}
+                <div className="flex items-center gap-3">
                   <div className="flex items-center gap-0.5">
                     {[...Array(5)].map((_, i) => (
                       <Star 
                         key={i} 
-                        className="w-4 h-4 fill-yellow-400 text-yellow-400" 
+                        className="w-3.5 h-3.5 fill-[#c9a84c] text-[#c9a84c]" 
                       />
                     ))}
                   </div>
-                  <span className="text-sm text-gray-600">
-                    4.8 <span className="text-gray-400">(127 reseñas)</span>
+                  <span className="text-xs text-white-60" style={{ color: "var(--white-60)" }}>
+                    <strong className="text-white">4.8</strong> (127 reseñas verificadas)
                   </span>
                 </div>
-
-                {/* Precio */}
-                <div className="flex items-baseline gap-3 mb-2">
-                  <p className="text-4xl font-bold text-gray-900">
-                    RD${product.price.toLocaleString()}
-                  </p>
-                  {product.tag === "sale" && (
-                    <span className="text-xl text-gray-400 line-through">
-                      RD${(product.price * 1.3).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-green-600 font-medium flex items-center gap-1">
-                  <Check className="w-4 h-4" />
-                  Ahorra hasta 30% en pre-orders
-                </p>
               </div>
 
-              <div className="border-t border-gray-200 my-6"></div>
+              {/* Bloque Precio y Oferta */}
+              <div className="p-5 rounded-2xl border border-white/5 bg-white/[0.02] flex items-center justify-between">
+                <div>
+                  <div className="flex items-baseline gap-3">
+                    <p className="text-3.5xl font-bold text-white font-mono">
+                      RD${product.price.toLocaleString()}
+                    </p>
+                    {product.tag === "sale" && (
+                      <span className="text-lg text-white-30 line-through font-mono" style={{ color: "var(--white-30)" }}>
+                        RD${(product.price * 1.3).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" />
+                    Disponible para envío express
+                  </p>
+                </div>
+                
+                <div className="glass px-3.5 py-2 rounded-xl text-right">
+                  <span className="text-[10px] uppercase tracking-luxury block text-white-60" style={{ color: "var(--white-60)" }}>
+                    Beneficio Pre-Order
+                  </span>
+                  <span className="text-xs font-bold text-gold" style={{ color: "var(--gold)" }}>
+                    Ahorra hasta 30%
+                  </span>
+                </div>
+              </div>
+
+              <div className="divider-gold"></div>
 
               {/* Selector de Talla */}
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-semibold text-gray-900">
-                    Talla: <span className="font-bold">{selectedSize}</span>
+                <div className="flex items-center justify-between mb-3.5">
+                  <label className="text-xs uppercase tracking-luxury font-bold text-white-60" style={{ color: "var(--white-60)" }}>
+                    Seleccione Talla: <span className="text-white font-bold ml-1">{selectedSize}</span>
                   </label>
-                  <button className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1 transition-colors underline">
+                  <button className="text-xs text-gold hover:text-white flex items-center gap-1 transition-colors underline" style={{ color: "var(--gold)" }}>
                     <Ruler className="w-3.5 h-3.5" />
                     Guía de tallas
                   </button>
@@ -272,14 +377,16 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   {sizes.map(size => (
                     <motion.button
                       key={size}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
                       onClick={() => setSelectedSize(size)}
-                      className={`py-3 text-sm font-semibold rounded-lg border-2 transition-all ${
-                        selectedSize === size
-                          ? "border-black bg-black text-white shadow-md"
-                          : "border-gray-200 hover:border-gray-400 text-gray-700"
-                      }`}
+                      className="py-3 text-xs font-bold rounded-lg border transition-all duration-300"
+                      style={{
+                        background: selectedSize === size ? "var(--grad-gold)" : "rgba(255,255,255,0.03)",
+                        borderColor: selectedSize === size ? "transparent" : "rgba(255,255,255,0.08)",
+                        color: selectedSize === size ? "var(--bg-primary)" : "var(--white-60)",
+                        boxShadow: selectedSize === size ? "var(--shadow-gold)" : "none"
+                      }}
                     >
                       {size}
                     </motion.button>
@@ -287,185 +394,199 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 </div>
               </div>
 
+              {/* Cantidad y Stock Status */}
               <div>
-                <label className="text-sm font-semibold text-gray-900 mb-3 block">
+                <label className="text-xs uppercase tracking-luxury font-bold text-white-60 mb-3 block" style={{ color: "var(--white-60)" }}>
                   Cantidad
                 </label>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center border-2 border-gray-200 rounded-lg overflow-hidden">
+                <div className="flex flex-wrap items-center gap-5">
+                  {/* Selector Capsule */}
+                  <div className="flex items-center border border-white/10 rounded-full bg-white/5 overflow-hidden">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                       disabled={product.stock === 0}
-                      className="p-3 hover:bg-gray-100 transition-colors active:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="p-2.5 px-4 text-white/60 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-20"
                     >
-                      <Minus className="w-4 h-4" />
+                      <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <span className="px-6 font-semibold text-gray-900 min-w-[3rem] text-center">
+                    <span className="px-5 font-mono font-bold text-sm text-white min-w-[2.5rem] text-center">
                       {product.stock === 0 ? 0 : quantity}
                     </span>
                     <button
                       onClick={() => setQuantity(quantity + 1)}
                       disabled={product.stock === 0 || (product.stock !== undefined && quantity >= product.stock)}
-                      className="p-3 hover:bg-gray-100 transition-colors active:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="p-2.5 px-4 text-white/60 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-20"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="flex items-center gap-1.5 text-sm">
+
+                  {/* Estado Stock Badge */}
+                  <div>
                     {product.stock === 0 ? (
-                      <>
-                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        <span className="text-red-600 font-semibold">Agotado</span>
-                      </>
+                      <span className="glass bg-rose-500/5 text-rose-400 border border-rose-500/20 px-4 py-2 rounded-full text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+                        Agotado
+                      </span>
                     ) : product.stock !== undefined && product.stock <= 5 ? (
-                      <>
-                        <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                        <span className="text-gray-600">
-                          Solo quedan <span className="font-bold text-orange-600">{product.stock} unidades</span>
-                        </span>
-                      </>
+                      <span className="glass bg-orange-500/5 text-orange-400 border border-orange-500/20 px-4 py-2 rounded-full text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5 animate-pulse">
+                        <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
+                        ¡Solo quedan {product.stock} unidades!
+                      </span>
                     ) : (
-                      <>
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-green-600 font-semibold">Disponible</span>
-                      </>
+                      <span className="glass bg-emerald-500/5 text-emerald-400 border border-emerald-500/20 px-4 py-2 rounded-full text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                        Disponible en stock
+                      </span>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* CTAs */}
-              <div className="space-y-3 pt-2">
+              {/* Botones de Acción (CTAs de Lujo) */}
+              <div className="space-y-3.5 pt-4">
                 <motion.button
                   onClick={handleAddToCart}
                   disabled={product.stock === 0}
                   whileTap={product.stock === 0 ? {} : { scale: 0.98 }}
-                  className={`w-full py-4 rounded-lg text-sm font-bold tracking-wide transition-all flex items-center justify-center gap-2 ${
-                    product.stock === 0
-                      ? 'bg-gray-400 text-white cursor-not-allowed'
-                      : isAdded 
-                        ? 'bg-green-600 text-white shadow-lg' 
-                        : 'bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl'
-                  }`}
+                  className="w-full py-4 rounded-lg text-xs font-bold tracking-luxury uppercase transition-all duration-300 flex items-center justify-center gap-2 border border-transparent shadow-lg"
+                  style={{
+                    background: product.stock === 0 ? "rgba(255,255,255,0.05)" : isAdded ? "var(--grad-gold)" : "var(--grad-gold)",
+                    color: product.stock === 0 ? "var(--white-30)" : "var(--bg-primary)",
+                    boxShadow: product.stock === 0 ? "none" : "var(--shadow-gold)",
+                    opacity: product.stock === 0 ? 0.5 : 1,
+                    cursor: product.stock === 0 ? "not-allowed" : "pointer"
+                  }}
                 >
                   <AnimatePresence mode="wait">
                     {product.stock === 0 ? (
-                      <span key="outofstock">Agotado</span>
+                      <span key="outofstock">Sin Existencias</span>
                     ) : isAdded ? (
                       <motion.div
                         key="added"
-                        initial={{ scale: 0, rotate: -180 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        exit={{ scale: 0 }}
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         className="flex items-center gap-2"
                       >
-                        <Check className="w-5 h-5" />
-                        ¡Agregado a tu bolsa!
+                        <Check className="w-4 h-4 text-neutral-950 stroke-[3]" />
+                        ¡Agregado a la Bolsa!
                       </motion.div>
                     ) : (
                       <motion.span 
                         key="add"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
+                        className="flex items-center gap-2"
                       >
+                        <ShoppingBag className="w-4 h-4" />
                         Agregar a la Bolsa
                       </motion.span>
                     )}
                   </AnimatePresence>
                 </motion.button>
 
-                <button 
+                <motion.button 
                   onClick={handleBuyNow}
                   disabled={product.stock === 0}
-                  className={`w-full py-4 border-2 rounded-lg text-sm font-bold transition-all active:scale-[0.98] ${
-                    product.stock === 0
-                      ? 'border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50'
-                      : 'border-black text-black hover:bg-black hover:text-white'
-                  }`}
+                  whileHover={product.stock === 0 ? {} : { scale: 1.01 }}
+                  whileTap={product.stock === 0 ? {} : { scale: 0.98 }}
+                  className="w-full py-4 border rounded-lg text-xs font-bold tracking-luxury uppercase transition-all duration-300 flex items-center justify-center gap-2"
+                  style={{
+                    borderColor: product.stock === 0 ? "rgba(255,255,255,0.05)" : "var(--gold)",
+                    background: "transparent",
+                    color: product.stock === 0 ? "var(--white-30)" : "var(--gold)",
+                    opacity: product.stock === 0 ? 0.5 : 1,
+                    cursor: product.stock === 0 ? "not-allowed" : "pointer"
+                  }}
+                  onMouseEnter={e => {
+                    if (product.stock !== 0) {
+                      e.currentTarget.style.background = "var(--gold-dim)";
+                      e.currentTarget.style.color = "var(--white)";
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (product.stock !== 0) {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = "var(--gold)";
+                    }
+                  }}
                 >
-                  {product.stock === 0 ? 'Sin Stock' : 'Comprar Ahora'}
-                </button>
+                  Comprar Ahora por WhatsApp
+                </motion.button>
               </div>
 
-              {/* Stock Status */}
-              {product.stock === 0 ? (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
-                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <X className="w-5 h-5 text-red-600" />
+              {/* Alert status box */}
+              {product.stock !== 0 && (
+                <div className="flex items-center gap-3 bg-emerald-950/15 border border-emerald-500/20 rounded-xl p-4">
+                  <div className="w-9 h-9 bg-emerald-500/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Check className="w-5 h-5 text-emerald-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-red-800">Agotado temporalmente</p>
-                    <p className="text-xs text-red-700">Este producto no está disponible para envío</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Check className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-green-800">En stock y listo para enviar</p>
-                    <p className="text-xs text-green-700">Procesa tu pedido hoy mismo</p>
+                    <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Listo para despachar</p>
+                    <p className="text-xs text-white-60" style={{ color: "var(--white-60)" }}>Procesamiento express con J.A.R.V.I.S y entrega garantizada.</p>
                   </div>
                 </div>
               )}
 
-              {/* Trust Signals */}
-              <div className="bg-gray-50 rounded-lg p-5 space-y-4 border border-gray-200">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Truck className="w-5 h-5 text-green-600" strokeWidth={2} />
+              {/* Trust Signals (Garantías) */}
+              <div className="glass p-5 rounded-2xl border border-white/5 space-y-4 bg-gradient-to-b from-white/[0.01] to-transparent">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(201,168,76,0.1)", color: "var(--gold)" }}>
+                    <Truck className="w-4.5 h-4.5" />
                   </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 mb-0.5">Envío Gratis</p>
-                    <p className="text-sm text-gray-600">Entrega en 7-10 días laborables</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <RotateCcw className="w-5 h-5 text-blue-600" strokeWidth={2} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 mb-0.5">Devoluciones Gratis</p>
-                    <p className="text-sm text-gray-600">15 días para cambios sin costo</p>
+                  <div>
+                    <p className="font-semibold text-white text-xs uppercase tracking-luxury mb-0.5">Envío Sin Costo</p>
+                    <p className="text-xs text-white-60" style={{ color: "var(--white-60)" }}>Entrega preferente en toda Rep. Dominicana en 7-10 días.</p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Shield className="w-5 h-5 text-purple-600" strokeWidth={2} />
+                <div className="flex items-start gap-3.5">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(201,168,76,0.1)", color: "var(--gold)" }}>
+                    <RotateCcw className="w-4.5 h-4.5" />
                   </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 mb-0.5">Compra Protegida</p>
-                    <p className="text-sm text-gray-600">Pago 100% seguro vía WhatsApp</p>
+                  <div>
+                    <p className="font-semibold text-white text-xs uppercase tracking-luxury mb-0.5">Devolución Asegurada</p>
+                    <p className="text-xs text-white-60" style={{ color: "var(--white-60)" }}>Garantía de cambio sin cargos dentro de los primeros 15 días.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(201,168,76,0.1)", color: "var(--gold)" }}>
+                    <Shield className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white text-xs uppercase tracking-luxury mb-0.5 font-bold">Transacción Protegida</p>
+                    <p className="text-xs text-white-60" style={{ color: "var(--white-60)" }}>Coordinación y pago 100% verificado y seguro a través de WhatsApp.</p>
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
+
         </div>
 
-        {/* TABS CON INFORMACIÓN */}
-        <div className="mt-16 border-t border-gray-200 pt-12">
-          {/* Tab Headers */}
-          <div className="border-b border-gray-200 mb-8">
+        {/* PESTAÑAS DETALLES TÉCNICOS */}
+        <div className="mt-20 border-t border-white/5 pt-16">
+          {/* Cabecera Pestañas */}
+          <div className="border-b border-white/5 mb-10">
             <nav className="flex gap-8 -mb-px">
               {tabs.map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`pb-4 text-sm font-semibold transition-colors relative whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? "text-black"
-                      : "text-gray-500 hover:text-gray-900"
-                  }`}
+                  className="pb-4 text-xs uppercase tracking-luxury font-bold transition-colors relative whitespace-nowrap"
+                  style={{
+                    color: activeTab === tab.id ? "var(--gold)" : "var(--white-60)"
+                  }}
                 >
                   {tab.label}
                   {activeTab === tab.id && (
                     <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-black"
+                      layoutId="activeTabDetails"
+                      className="absolute bottom-0 left-0 right-0 h-0.5"
+                      style={{ background: "var(--gold)" }}
                       transition={{ type: "spring", stiffness: 500, damping: 30 }}
                     />
                   )}
@@ -474,78 +595,66 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             </nav>
           </div>
 
-          {/* Tab Content */}
+          {/* Contenido Pestañas */}
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="max-w-3xl"
+              transition={{ duration: 0.25 }}
+              className="max-w-4xl text-sm"
+              style={{ color: "var(--white-60)" }}
             >
               {activeTab === "description" && (
-                <div className="prose prose-gray max-w-none">
-                  <p className="text-gray-700 text-base leading-relaxed mb-4">
+                <div className="space-y-4 leading-relaxed font-light">
+                  <p className="text-white/80 text-base">
                     {product.description}
                   </p>
-                  <p className="text-gray-700 text-base leading-relaxed">
-                    Esta pieza forma parte de nuestra colección exclusiva, diseñada específicamente 
-                    para el clima tropical del Caribe. Cada prenda es confeccionada con materiales 
-                    de primera calidad que garantizan comodidad, durabilidad y un estilo atemporal 
-                    que te acompañará en cualquier ocasión.
+                  <p>
+                    Esta pieza forma parte de nuestra colección de alta costura, concebida bajo los 
+                    más altos estándares de diseño contemporáneo y comodidad sofisticada. Su corte y textura 
+                    se fusionan para moldear un estilo distinguido y elegante en cualquier tipo de ocasión.
                   </p>
                 </div>
               )}
 
               {activeTab === "details" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Info className="w-5 h-5" />
-                      Características
+                    <h3 className="font-semibold text-white text-xs uppercase tracking-luxury mb-5 flex items-center gap-2">
+                      <Info className="w-4 h-4 text-gold" style={{ color: "var(--gold)" }} />
+                      Características Clave
                     </h3>
-                    <ul className="space-y-3">
-                      <li className="flex items-start gap-2 text-gray-700">
-                        <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span>Tela transpirable ideal para clima cálido y húmedo</span>
+                    <ul className="space-y-3.5">
+                      <li className="flex items-start gap-2.5 text-white/85">
+                        <Check className="w-4.5 h-4.5 text-gold mt-0.5 flex-shrink-0" style={{ color: "var(--gold)" }} />
+                        <span>Tejido premium transpirable de fibra fina natural</span>
                       </li>
-                      <li className="flex items-start gap-2 text-gray-700">
-                        <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span>Corte moderno y favorecedor que estiliza la silueta</span>
+                      <li className="flex items-start gap-2.5 text-white/85">
+                        <Check className="w-4.5 h-4.5 text-gold mt-0.5 flex-shrink-0" style={{ color: "var(--gold)" }} />
+                        <span>Ajuste anatómico de precisión para caída elegante</span>
                       </li>
-                      <li className="flex items-start gap-2 text-gray-700">
-                        <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span>Costuras reforzadas de alta calidad y durabilidad</span>
-                      </li>
-                      <li className="flex items-start gap-2 text-gray-700">
-                        <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span>Resistente a múltiples lavados sin perder forma</span>
+                      <li className="flex items-start gap-2.5 text-white/85">
+                        <Check className="w-4.5 h-4.5 text-gold mt-0.5 flex-shrink-0" style={{ color: "var(--gold)" }} />
+                        <span>Acabados y costuras invisibles reforzadas</span>
                       </li>
                     </ul>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-4">Cuidados</h3>
-                    <ul className="space-y-2 text-gray-700">
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        Lavar a máquina en agua fría (30°C)
+                    <h3 className="font-semibold text-white text-xs uppercase tracking-luxury mb-5">Instrucciones de Cuidado</h3>
+                    <ul className="space-y-2.5">
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-gold rounded-full" style={{ background: "var(--gold)" }}></span>
+                        Lavar a máquina a mano o programa delicado (30°C)
                       </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        No usar blanqueador ni productos químicos fuertes
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-gold rounded-full" style={{ background: "var(--gold)" }}></span>
+                        Evitar lejías y detergentes abrasivos
                       </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        Secar a temperatura baja o al aire libre
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        Planchar a baja temperatura si es necesario
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        No lavar en seco
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-gold rounded-full" style={{ background: "var(--gold)" }}></span>
+                        Planchar del revés a baja temperatura
                       </li>
                     </ul>
                   </div>
@@ -553,52 +662,33 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               )}
 
               {activeTab === "shipping" && (
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <Truck className="w-5 h-5" />
-                      Información de Envío
+                    <h3 className="font-semibold text-white text-xs uppercase tracking-luxury mb-4 flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-gold" style={{ color: "var(--gold)" }} />
+                      Envíos de Pedidos
                     </h3>
-                    <p className="text-gray-700 mb-2">
-                      Realizamos envíos a toda la República Dominicana de forma gratuita en todos los pre-orders.
+                    <p className="mb-4">
+                      Realizamos distribución directa y certificada a todo el territorio nacional sin coste adicional.
                     </p>
-                    <ul className="space-y-2 text-gray-700">
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        <span><strong>Tiempo de entrega:</strong> 7-10 días laborables</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        <span><strong>Procesamiento:</strong> 1-2 días hábiles</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        <span><strong>Tracking:</strong> Recibirás un código de seguimiento por WhatsApp</span>
-                      </li>
+                    <ul className="space-y-2 font-mono text-xs">
+                      <li>• PROCESAMIENTO: 24-48 horas laborables</li>
+                      <li>• TIEMPO DE ENTREGA: 7-10 días hábiles</li>
+                      <li>• SEGUIMIENTO: Notificación en tiempo real por WhatsApp</li>
                     </ul>
                   </div>
 
-                  <div className="border-t border-gray-200 pt-6">
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <RotateCcw className="w-5 h-5" />
-                      Política de Devoluciones
+                  <div>
+                    <h3 className="font-semibold text-white text-xs uppercase tracking-luxury mb-4 flex items-center gap-2">
+                      <RotateCcw className="w-4 h-4 text-gold" style={{ color: "var(--gold)" }} />
+                      Cambios & Devoluciones
                     </h3>
-                    <p className="text-gray-700 mb-2">
-                      Tienes 15 días desde la recepción del producto para realizar cambios o devoluciones sin costo adicional.
+                    <p className="mb-3">
+                      Si el tallaje no es el correcto, dispones de una ventana de 15 días naturales para coordinar una devolución gratuita.
                     </p>
-                    <ul className="space-y-2 text-gray-700">
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        <span>El producto debe estar sin usar y con etiquetas originales</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        <span>Reembolso completo o cambio por otra talla/producto</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
-                        <span>Recogida gratuita en tu domicilio</span>
-                      </li>
+                    <ul className="space-y-2">
+                      <li>• El artículo debe conservar sellos y empaque original.</li>
+                      <li>• Coordinación automatizada a través de J.A.R.V.I.S.</li>
                     </ul>
                   </div>
                 </div>
@@ -606,6 +696,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             </motion.div>
           </AnimatePresence>
         </div>
+
       </div>
     </div>
   );

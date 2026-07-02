@@ -1,6 +1,8 @@
-import { products } from "@/data/products";
-import { ProductCard } from "@/app/components/ProductCard"; // Asegúrate que esta ruta es correcta
+import { supabase, SupabaseProduct, mapSupabaseProduct } from "@/app/lib/supabase";
+import { ProductCard } from "@/app/components/ProductCard";
 import Link from "next/link";
+
+export const dynamic = 'force-dynamic';
 
 export async function generateStaticParams() {
   return [
@@ -11,20 +13,32 @@ export async function generateStaticParams() {
   ];
 }
 
-// OJO: Definimos params como Promise para compatibilidad con Next.js 15
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
-
-  // 1. Esperamos a que los params estén listos (Fix para Next.js 15)
   const resolvedParams = await params;
-
-  // 2. Decodificamos de forma segura (si es undefined, usamos string vacío)
   const rawCategory = resolvedParams?.category || "";
   const category = decodeURIComponent(rawCategory);
 
-  console.log("Categoria buscada:", category); // Mira esto en tu terminal
+  console.log("Categoria buscada:", category);
 
-  const filteredProducts = products.filter((product) => {
-    // BLINDAJE: Si el producto no tiene datos, lo saltamos
+  // Consultar productos en tiempo real desde Supabase
+  let dbProducts: any[] = [];
+  try {
+    const { data, error } = await supabase
+      .from('Products')
+      .select('*, Categories(name), Images(image_url)')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Error de Supabase al listar productos en la página de categorías:', error);
+    } else if (data) {
+      dbProducts = (data as SupabaseProduct[]).map(mapSupabaseProduct);
+    }
+  } catch (err) {
+    console.error('❌ Error crítico al consultar productos:', err);
+  }
+
+  const filteredProducts = dbProducts.filter((product) => {
     if (!product || !product.category) return false;
 
     // Normalizamos a minúsculas para comparar sin errores
@@ -49,16 +63,15 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
         </h1>
 
         {filteredProducts.length > 0 ? (
-          // <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
           <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProducts.map((p) => (
-              <ProductCard key={p.id} {...p} image={p.images[0]} />
+              <ProductCard key={p.id} {...p} />
             ))}
           </div>
         ) : (
           <div className="py-20 text-center">
             <p className="text-xl">No hay productos en la categoría: <strong>{category}</strong></p>
-            <p className="text-sm text-gray-400 mt-2">Revisa que en data/products.ts la categoría sea idéntica (ej: "hombre")</p>
+            <p className="text-sm text-gray-400 mt-2">Añade productos con esta categoría en la base de datos o consola de J.A.R.V.I.S.</p>
           </div>
         )}
       </div>

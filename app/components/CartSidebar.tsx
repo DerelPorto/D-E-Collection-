@@ -55,7 +55,8 @@ export default function CartSidebar() {
       items: validItems.map(item => ({ id: item.id, qty: item.quantity }))
     };
 
-    const message = `Hola D&E, quiero confirmar este pedido de la web:\n\n${productList}\n\n*TOTAL: RD$${total.toLocaleString()}*\n\nQuedo atento para el pago y envío.\n\n[ORDEN_WEB:${JSON.stringify(payload)}]`;
+    const payloadEncoded = window.btoa(JSON.stringify(payload));
+    const message = `Hola D&E, quiero confirmar este pedido de la web:\n\n${productList}\n\n*TOTAL: RD$${total.toLocaleString()}*\n\nQuedo atento para el pago y envío.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n[ORDEN_WEB:${payloadEncoded}]`;
     const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
   };
@@ -261,7 +262,7 @@ export default function CartSidebar() {
                   className={`w-full py-4 uppercase tracking-widest text-sm font-medium transition-all shadow-lg border-2 active:scale-[0.98] ${
                     hasInvalidItems
                       ? "bg-gray-200 border-gray-200 text-gray-400 cursor-not-allowed shadow-none"
-                      : "bg-brand-black text-black border-black hover:bg-gray-400 hover:border-brand-black hover:shadow-xl"
+                      : "bg-brand-black text-white border-black hover:bg-gray-800 hover:border-brand-black hover:shadow-xl"
                   }`}
                 >
                   Confirmar Pedido

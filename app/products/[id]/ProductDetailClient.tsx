@@ -64,7 +64,8 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     const payload = {
       items: [{ id: product.id, qty: quantity }]
     };
-    const message = `Hola D&E, quiero comprar este artículo directamente desde la web:\n\n${productList}\n\n*TOTAL: RD$${(product.price * quantity).toLocaleString()}*\n\nQuedo atento para coordinar el pago y envío.\n\n[ORDEN_WEB:${JSON.stringify(payload)}]`;
+    const payloadEncoded = window.btoa(JSON.stringify(payload));
+    const message = `Hola D&E, quiero comprar este artículo directamente desde la web:\n\n${productList}\n\n*TOTAL: RD$${(product.price * quantity).toLocaleString()}*\n\nQuedo atento para coordinar el pago y envío.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n[ORDEN_WEB:${payloadEncoded}]`;
     const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
   };

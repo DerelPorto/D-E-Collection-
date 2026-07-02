@@ -20,7 +20,9 @@ import {
     AlertCircle,
     UserCheck,
     Calendar,
-    Save
+    Save,
+    LogOut,
+    Key
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -57,6 +59,11 @@ interface Order {
 }
 
 export default function Dashboard() {
+    // --- 🔐 ESTADOS DE AUTENTICACIÓN ---
+    const [authLoading, setAuthLoading] = useState(true);
+    const [adminUser, setAdminUser] = useState<any>(null);
+    const [tenantId, setTenantId] = useState<string | null>(null);
+
     // --- 📊 ESTADOS DEL SISTEMA ---
     const [tenant, setTenant] = useState<Tenant | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
@@ -67,6 +74,14 @@ export default function Dashboard() {
     const [savingSettings, setSavingSettings] = useState(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [pendingStocks, setPendingStocks] = useState<Record<number, number>>({});
+
+    // Equipo / Administradores
+    const [teamMembers, setTeamMembers] = useState<any[]>([]);
+    const [showAddUserForm, setShowAddUserForm] = useState(false);
+    const [newUserName, setNewUserName] = useState('');
+    const [newUserEmail, setNewUserEmail] = useState('');
+    const [newUserPhone, setNewUserPhone] = useState('');
+    const [newUserPassword, setNewUserPassword] = useState('');
 
     // Ajustes del formulario
     const [botName, setBotName] = useState('');
@@ -91,9 +106,82 @@ export default function Dashboard() {
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
+    // --- 🔐 EFECTO DE AUTENTICACIÓN DE ADMINISTRADOR ---
+    useEffect(() => {
+        const verifyAuth = async () => {
+            try {
+                const storedUser = localStorage.getItem('jarvis_admin_user');
+                if (!storedUser) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const parsed = JSON.parse(storedUser);
+
+                // Buscar y verificar al usuario en la base de datos con sus credenciales guardadas
+                const { data: userData, error: userError } = await supabase
+                    .from('User')
+                    .select('*')
+                    .eq('email', parsed.email)
+                    .eq('password', parsed.password)
+                    .eq('is_active', true)
+                    .single();
+
+                if (userError || !userData) {
+                    console.error("Acceso denegado o credenciales no válidas para:", parsed.email);
+                    localStorage.removeItem('jarvis_admin_user');
+                    window.location.href = '/login?error=unauthorized';
+                    return;
+                }
+
+                setAdminUser(userData);
+                setTenantId(userData.tenant_id);
+                setAuthLoading(false);
+            } catch (err) {
+                console.error("Excepción en autenticación:", err);
+                localStorage.removeItem('jarvis_admin_user');
+                window.location.href = '/login?error=error';
+            }
+        };
+
+        verifyAuth();
+    }, []);
+
     // Estado del QR de WhatsApp
     const [qrConnected, setQrConnected] = useState(false);
     const [qrGenerating, setQrGenerating] = useState(false);
+
+    // Estado real de WhatsApp
+    const [whatsappStatus, setWhatsappStatus] = useState<'CONNECTED' | 'DISCONNECTED' | 'CONNECTING' | 'QR_READY'>('DISCONNECTED');
+    const [whatsappQr, setWhatsappQr] = useState<string | null>(null);
+    const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+
+    // Polling del estado de WhatsApp
+    useEffect(() => {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4001';
+        
+        const fetchStatus = async () => {
+            try {
+                const res = await fetch(`${backendUrl}/api/v1/whatsapp/status`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setWhatsappStatus(data.status);
+                    setWhatsappQr(data.qr);
+                    setWhatsappEnabled(data.enabled);
+                    
+                    // Sincronizar con los estados visuales originales
+                    setQrConnected(data.status === 'CONNECTED');
+                    setQrGenerating(data.status === 'CONNECTING');
+                }
+            } catch (err) {
+                console.error("Error al obtener estado de WhatsApp:", err);
+            }
+        };
+
+        fetchStatus();
+        const interval = setInterval(fetchStatus, 3000);
+        return () => clearInterval(interval);
+    }, []);
 
     // --- 🔔 DISPARADOR DE NOTIFICACIONES TOAST ---
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -104,22 +192,14 @@ export default function Dashboard() {
 
     // --- 🔄 CARGADORES DE DATOS Y TIEMPO REAL ---
     useEffect(() => {
-        cargarTodo();
+        if (!tenantId) return;
+
+        cargarTodo(tenantId);
 
         let channelProducts: any;
         let channelRequests: any;
 
         const setupRealtime = async () => {
-            const { data: tenantData } = await supabase
-                .from('Tenants')
-                .select('id')
-                .eq('name', 'D&E Collection')
-                .limit(1)
-                .single();
-
-            if (!tenantData) return;
-            const tenantId = tenantData.id;
-
             channelProducts = supabase
                 .channel('realtime-products')
                 .on(
@@ -142,7 +222,7 @@ export default function Dashboard() {
                         } else if (payload.eventType === 'DELETE') {
                             showToast(`🗑️ Producto removido del catálogo.`, 'success');
                         }
-                        cargarTodo();
+                        cargarTodo(tenantId);
                     }
                 )
                 .subscribe();
@@ -167,7 +247,7 @@ export default function Dashboard() {
                         } else if (payload.eventType === 'UPDATE') {
                             showToast(`⚖️ Pedido #${payload.new.id} actualizado a "${payload.new.status}".`, 'success');
                         }
-                        cargarTodo();
+                        cargarTodo(tenantId);
                     }
                 )
                 .subscribe();
@@ -179,17 +259,16 @@ export default function Dashboard() {
             if (channelProducts) supabase.removeChannel(channelProducts);
             if (channelRequests) supabase.removeChannel(channelRequests);
         };
-    }, []);
+    }, [tenantId]);
 
-    const cargarTodo = async () => {
+    const cargarTodo = async (activeTenantId: string) => {
         setLoading(true);
         try {
-            // 1. Obtener inquilino por defecto 'D&E Collection'
+            // 1. Obtener inquilino por su ID
             const { data: tenantData, error: errTenant } = await supabase
                 .from('Tenants')
                 .select('*')
-                .eq('name', 'D&E Collection')
-                .limit(1)
+                .eq('id', activeTenantId)
                 .single();
 
             if (errTenant || !tenantData) {
@@ -239,8 +318,13 @@ export default function Dashboard() {
 
             setOrders(formattedRequests);
 
-            // Calcular ingresos totales sumando órdenes
-            const totalSum = formattedRequests.reduce((sum, o) => sum + o.total, 0);
+            // Calcular ingresos totales sumando órdenes (excluyendo canceladas o anuladas)
+            const totalSum = formattedRequests
+                .filter(o => {
+                    const statusLower = (o.status || '').toLowerCase();
+                    return !statusLower.includes('cancel') && !statusLower.includes('anul');
+                })
+                .reduce((sum, o) => sum + o.total, 0);
             setTotalRevenue(totalSum);
 
             // 4. Contar clientes registrados por la IA
@@ -263,6 +347,14 @@ export default function Dashboard() {
             if (fetchedCats.length > 0) {
                 setSelectedCategoryId(fetchedCats[0].id);
             }
+
+            // 6. Cargar administradores / miembros del equipo
+            const { data: teamData } = await supabase
+                .from('User')
+                .select('*')
+                .eq('tenant_id', tenantId)
+                .order('name');
+            setTeamMembers(teamData || []);
 
         } catch (e) {
             console.error("Excepción en cargador global:", e);
@@ -306,6 +398,64 @@ export default function Dashboard() {
             showToast("No se pudo conectar con Supabase.", "error");
         } finally {
             setSavingSettings(false);
+        }
+    };
+
+    // --- 💾 ACCIÓN: AGREGAR NUEVO ADMINISTRADOR ---
+    const agregarAdministrador = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!tenantId) return;
+
+        if (!newUserName || !newUserEmail || !newUserPhone) {
+            showToast("Por favor, complete todos los campos obligatorios.", "error");
+            return;
+        }
+
+        setActionLoading('add_user');
+        try {
+            // Verificar si el email ya existe en la base de datos
+            const { data: existingUser } = await supabase
+                .from('User')
+                .select('id')
+                .eq('email', newUserEmail)
+                .maybeSingle();
+
+            if (existingUser) {
+                showToast("Este correo electrónico ya está registrado.", "error");
+                setActionLoading(null);
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('User')
+                .insert([{
+                    name: newUserName,
+                    email: newUserEmail,
+                    phone: newUserPhone,
+                    password: newUserPassword || null,
+                    tenant_id: tenantId,
+                    is_active: true,
+                    status: 'active'
+                }])
+                .select()
+                .single();
+
+            if (error) {
+                showToast(`Error al agregar administrador: ${error.message}`, "error");
+            } else {
+                showToast("¡Administrador agregado con éxito!");
+                setTeamMembers(prev => [...prev, data]);
+                // Reset form fields
+                setNewUserName('');
+                setNewUserEmail('');
+                setNewUserPhone('');
+                setNewUserPassword('');
+                setShowAddUserForm(false);
+            }
+        } catch (err: any) {
+            showToast("Error de conexión al agregar usuario.", "error");
+        } finally {
+            setActionLoading(null);
         }
     };
 
@@ -416,7 +566,7 @@ export default function Dashboard() {
                     title: newProdTitle,
                     price: parseFloat(newProdPrice),
                     stock: parseInt(newProdStock),
-                    description: newProdDesc || null,
+                    description: newProdDesc || '',
                     category_id: Number(selectedCategoryId),
                     is_active: true,
                     tenant_id: tenant.id
@@ -503,20 +653,51 @@ export default function Dashboard() {
         }
     };
 
-    // --- 📱 ACCIÓN: GENERAR QR (MOCKUP) ---
-    const simularQR = () => {
-        if (qrConnected) {
-            setQrConnected(false);
-            showToast("Conexión de WhatsApp desconectada.");
-            return;
-        }
-
-        setQrGenerating(true);
-        setTimeout(() => {
+    // --- 📱 ACCIONES DE CONEXIÓN WHATSAPP REALES ---
+    const conectarWhatsApp = async () => {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4001';
+        try {
+            setQrGenerating(true);
+            const res = await fetch(`${backendUrl}/api/v1/whatsapp/connect`, { method: 'POST' });
+            if (res.ok) {
+                showToast("Iniciando canal de conexión...");
+            } else {
+                showToast("Error al iniciar canal de conexión.", "error");
+                setQrGenerating(false);
+            }
+        } catch (err) {
+            showToast("Error de red al conectar WhatsApp.", "error");
             setQrGenerating(false);
-            setQrConnected(true);
-            showToast("¡WhatsApp unificado con éxito! Estado: Sincronizado.");
-        }, 3000);
+        }
+    };
+
+    const desconectarWhatsApp = async () => {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4001';
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/whatsapp/disconnect`, { method: 'POST' });
+            if (res.ok) {
+                showToast("Conexión de WhatsApp detenida.");
+            } else {
+                showToast("Error al detener la conexión.", "error");
+            }
+        } catch (err) {
+            showToast("Error de red al desconectar WhatsApp.", "error");
+        }
+    };
+
+    const cerrarSesionWhatsApp = async () => {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4001';
+        if (!window.confirm("¿Está seguro de que desea cerrar la sesión actual de WhatsApp? Tendrá que volver a escanear el código QR.")) return;
+        try {
+            const res = await fetch(`${backendUrl}/api/v1/whatsapp/logout`, { method: 'POST' });
+            if (res.ok) {
+                showToast("Sesión cerrada y credenciales eliminadas.");
+            } else {
+                showToast("Error al cerrar sesión.", "error");
+            }
+        } catch (err) {
+            showToast("Error de red al cerrar sesión.", "error");
+        }
     };
 
     // --- 📊 CALCULAR VENTAS SEMANALES EN VIVO ---
@@ -526,9 +707,12 @@ export default function Dashboard() {
             'Lun': 0, 'Mar': 0, 'Mié': 0, 'Jue': 0, 'Vie': 0, 'Sáb': 0, 'Dom': 0
         };
 
-        // Agrupar y sumar el total de órdenes por día de la semana
+        // Agrupar y sumar el total de órdenes por día de la semana (excluyendo canceladas o anuladas)
         orders.forEach(order => {
             if (!order.created_at) return;
+            const statusLower = (order.status || '').toLowerCase();
+            if (statusLower.includes('cancel') || statusLower.includes('anul')) return;
+
             const date = new Date(order.created_at);
             const nombreDia = diasSemana[date.getDay()];
             if (ventasPorDia[nombreDia] !== undefined) {
@@ -565,6 +749,27 @@ export default function Dashboard() {
     };
 
     const datosSemanales = obtenerDatosSemanales();
+
+    // --- 🔐 PANTALLA DE CARGA DE AUTENTICACIÓN ---
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center text-neutral-100 gap-4 font-sans">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-8 rounded-2xl bg-neutral-905/40 border border-neutral-850/60 backdrop-blur-xl flex flex-col items-center text-center max-w-sm"
+                >
+                    <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                        className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full mb-4"
+                    />
+                    <h2 className="text-neutral-200 font-bold text-lg">Iniciando J.A.R.V.I.S...</h2>
+                    <p className="text-neutral-500 text-xs mt-1">Verificando credenciales de administrador de forma segura.</p>
+                </motion.div>
+            </div>
+        );
+    }
 
     // --- ⌛ PANTALLA DE CARGA ---
     if (loading) {
@@ -614,11 +819,23 @@ export default function Dashboard() {
 
                 <div className="flex items-center gap-4">
                     <button
-                        onClick={cargarTodo}
-                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-neutral-850 text-neutral-400 hover:text-neutral-200 transition-colors"
+                        onClick={() => tenantId && cargarTodo(tenantId)}
+                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-neutral-850 text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer"
                         title="Refrescar datos"
                     >
                         <RefreshCw className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => {
+                            if (window.confirm("¿Desea cerrar sesión?")) {
+                                localStorage.removeItem('jarvis_admin_user');
+                                window.location.href = '/login';
+                            }
+                        }}
+                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-rose-950/40 hover:border-rose-900 text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer"
+                        title="Cerrar Sesión"
+                    >
+                        <LogOut className="w-4 h-4" />
                     </button>
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 text-xs font-semibold">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -635,7 +852,7 @@ export default function Dashboard() {
                     {/* --- HEADER BIENVENIDA --- */}
                     <div className="bg-gradient-to-r from-neutral-900 to-neutral-950 border border-neutral-850 p-6 rounded-2xl flex items-center justify-between shadow-sm">
                         <div>
-                            <h2 className="text-2xl font-bold tracking-tight">Buenos días, Administrador ✨</h2>
+                            <h2 className="text-2xl font-bold tracking-tight">Buenos días, {adminUser?.name || 'Administrador'} ✨</h2>
                             <p className="text-neutral-400 text-sm mt-1">Gestionando actualmente el comercio <span className="text-amber-500 font-semibold">{tenant?.name}</span>.</p>
                         </div>
                         <div className="text-right">
@@ -999,7 +1216,7 @@ export default function Dashboard() {
                         </h3>
 
                         <div className="bg-neutral-950/60 p-4 rounded-xl border border-neutral-900 flex flex-col items-center justify-center text-center">
-                            {qrConnected ? (
+                            {whatsappStatus === 'CONNECTED' ? (
                                 <>
                                     <div className="w-24 h-24 rounded-2xl bg-emerald-950/40 border border-emerald-800 flex items-center justify-center relative overflow-hidden shadow-lg shadow-emerald-500/10">
                                         <Check className="w-12 h-12 text-emerald-400 stroke-[2.5]" />
@@ -1008,43 +1225,81 @@ export default function Dashboard() {
                                         <div className="text-sm font-bold text-neutral-200">Unified WhatsApp Live</div>
                                         <p className="text-xs text-neutral-500 mt-1 max-w-[200px]">El bot de ventas está activo para los clientes finales.</p>
                                     </div>
+                                    <button
+                                        onClick={desconectarWhatsApp}
+                                        className="w-full mt-5 py-2 rounded-lg text-xs font-bold transition-all transform active:scale-95 bg-rose-950/40 border border-rose-900 text-rose-400 hover:bg-rose-900/20 cursor-pointer"
+                                    >
+                                        Desconectar Bot
+                                    </button>
+                                    <button
+                                        onClick={cerrarSesionWhatsApp}
+                                        className="text-[10px] text-neutral-500 hover:text-neutral-300 underline mt-2.5 transition-colors cursor-pointer"
+                                    >
+                                        Cerrar Sesión (Borrar credenciales)
+                                    </button>
+                                </>
+                            ) : whatsappStatus === 'CONNECTING' ? (
+                                <>
+                                    <div className="w-32 h-32 bg-neutral-900 border border-neutral-850 rounded-2xl flex items-center justify-center">
+                                        <motion.div
+                                            animate={{ rotate: 360 }}
+                                            transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                                            className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full"
+                                        />
+                                    </div>
+                                    <div className="mt-4">
+                                        <div className="text-sm font-bold text-neutral-300">Estableciendo canal...</div>
+                                        <p className="text-xs text-neutral-500 mt-1 max-w-[200px]">Generando canal seguro de autenticación.</p>
+                                    </div>
+                                    <button
+                                        disabled
+                                        className="w-full mt-5 py-2 rounded-lg text-xs font-bold bg-neutral-850 text-neutral-500 cursor-not-allowed"
+                                    >
+                                        Conectando...
+                                    </button>
+                                </>
+                            ) : whatsappStatus === 'QR_READY' && whatsappQr ? (
+                                <>
+                                    <div className="w-32 h-32 bg-white p-2 rounded-2xl relative flex items-center justify-center">
+                                        <img 
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(whatsappQr)}`} 
+                                            alt="WhatsApp QR Code" 
+                                            className="w-full h-full object-contain rounded-xl" 
+                                        />
+                                    </div>
+                                    <div className="mt-4">
+                                        <div className="text-sm font-bold text-neutral-300">Vincular Dispositivo</div>
+                                        <p className="text-xs text-neutral-500 mt-1 max-w-[200px]">Escanee este código QR con su aplicación WhatsApp para vincular el bot.</p>
+                                    </div>
+                                    <button
+                                        onClick={desconectarWhatsApp}
+                                        className="w-full mt-5 py-2 rounded-lg text-xs font-bold transition-all transform active:scale-95 bg-rose-950/40 border border-rose-900 text-rose-400 hover:bg-rose-900/20 cursor-pointer"
+                                    >
+                                        Cancelar Conexión
+                                    </button>
                                 </>
                             ) : (
                                 <>
                                     <div className="w-32 h-32 bg-neutral-900 border border-neutral-850 p-2.5 rounded-2xl relative flex items-center justify-center">
-                                        {qrGenerating ? (
-                                            <motion.div
-                                                animate={{ rotate: 360 }}
-                                                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                                                className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full"
-                                            />
-                                        ) : (
-                                            <div className="relative group cursor-pointer" onClick={simularQR}>
-                                                {/* Código QR Simulado */}
-                                                <QrCode className="w-28 h-28 text-neutral-300 opacity-80 group-hover:opacity-100 transition-opacity" />
-                                                <div className="absolute inset-0 bg-neutral-950/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
-                                                    <span className="text-[10px] font-bold text-amber-400 tracking-wider">ESCANEAR QR</span>
-                                                </div>
+                                        <div className="relative group cursor-pointer" onClick={conectarWhatsApp}>
+                                            <QrCode className="w-28 h-28 text-neutral-300 opacity-80 group-hover:opacity-100 transition-opacity" />
+                                            <div className="absolute inset-0 bg-neutral-950/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
+                                                <span className="text-[10px] font-bold text-amber-400 tracking-wider">CONECTAR BOT</span>
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                     <div className="mt-4">
                                         <div className="text-sm font-bold text-neutral-300">Vincular Dispositivo</div>
-                                        <p className="text-xs text-neutral-500 mt-1 max-w-[200px]">Haga clic o escanee para iniciar sesión en WhatsApp.</p>
+                                        <p className="text-xs text-neutral-500 mt-1 max-w-[200px]">Pulse en el botón o en la imagen para iniciar el bot y generar el código QR.</p>
                                     </div>
+                                    <button
+                                        onClick={conectarWhatsApp}
+                                        className="w-full mt-5 py-2 rounded-lg text-xs font-bold transition-all transform active:scale-95 bg-amber-500 text-neutral-950 hover:bg-amber-600 shadow-md shadow-amber-500/10 cursor-pointer"
+                                    >
+                                        Generar Canal QR
+                                    </button>
                                 </>
                             )}
-
-                            <button
-                                onClick={simularQR}
-                                disabled={qrGenerating}
-                                className={`w-full mt-5 py-2 rounded-lg text-xs font-bold transition-all transform active:scale-95 ${qrConnected
-                                    ? 'bg-rose-950/40 border border-rose-900 text-rose-400 hover:bg-rose-900/20'
-                                    : 'bg-amber-500 text-neutral-950 hover:bg-amber-600 shadow-md shadow-amber-500/10'
-                                    }`}
-                            >
-                                {qrGenerating ? 'Estableciendo canal...' : qrConnected ? 'Desconectar Bot' : 'Generar Canal QR'}
-                            </button>
                         </div>
                     </div>
 
@@ -1116,6 +1371,130 @@ export default function Dashboard() {
                                 )}
                             </button>
                         </form>
+                    </div>
+
+                    {/* --- EQUIPO Y ADMINISTRADORES --- */}
+                    <div className="bg-neutral-900/30 border border-neutral-900 p-6 rounded-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-bold flex items-center gap-2">
+                                <Users className="w-5 h-5 text-amber-500" />
+                                Administradores y Equipo
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowAddUserForm(!showAddUserForm)}
+                                className="px-2.5 py-1 rounded bg-neutral-950 border border-neutral-850 text-neutral-400 hover:text-amber-500 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                                Agregar
+                            </button>
+                        </div>
+
+                        <AnimatePresence>
+                            {showAddUserForm && (
+                                <motion.form
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    onSubmit={agregarAdministrador}
+                                    className="bg-neutral-950/60 p-4 rounded-xl border border-neutral-900 space-y-4 mb-4 overflow-hidden"
+                                >
+                                    <div>
+                                        <label className="text-[10px] font-bold text-neutral-400 block mb-1">NOMBRE COMPLETO</label>
+                                        <input
+                                            type="text"
+                                            value={newUserName}
+                                            onChange={e => setNewUserName(e.target.value)}
+                                            placeholder="ej. Juan Pérez"
+                                            className="w-full bg-neutral-950 border border-neutral-850 px-3 py-2 rounded-lg text-sm text-neutral-200 focus:outline-none focus:border-amber-500 transition-colors"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-neutral-400 block mb-1">CORREO ELECTRÓNICO</label>
+                                        <input
+                                            type="email"
+                                            value={newUserEmail}
+                                            onChange={e => setNewUserEmail(e.target.value)}
+                                            placeholder="ej. juan@comercio.com"
+                                            className="w-full bg-neutral-950 border border-neutral-850 px-3 py-2 rounded-lg text-sm text-neutral-200 focus:outline-none focus:border-amber-500 transition-colors"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-neutral-400 block mb-1">TELÉFONO / WHATSAPP</label>
+                                        <input
+                                            type="text"
+                                            value={newUserPhone}
+                                            onChange={e => setNewUserPhone(e.target.value)}
+                                            placeholder="ej. 18091234567"
+                                            className="w-full bg-neutral-950 border border-neutral-850 px-3 py-2 rounded-lg text-sm text-neutral-200 focus:outline-none focus:border-amber-500 transition-colors"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-neutral-400 block mb-1">CONTRASEÑA (OPCIONAL)</label>
+                                        <input
+                                            type="password"
+                                            value={newUserPassword}
+                                            onChange={e => setNewUserPassword(e.target.value)}
+                                            placeholder="Dejar vacío para configurar luego"
+                                            className="w-full bg-neutral-950 border border-neutral-850 px-3 py-2 rounded-lg text-sm text-neutral-200 focus:outline-none focus:border-amber-500 transition-colors"
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={actionLoading === 'add_user'}
+                                        className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-neutral-800 text-neutral-950 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/10"
+                                    >
+                                        {actionLoading === 'add_user' ? (
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            "Guardar Administrador"
+                                        )}
+                                    </button>
+                                </motion.form>
+                            )}
+                        </AnimatePresence>
+
+                        <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                            {teamMembers.map(member => (
+                                <div key={member.id} className="bg-neutral-950/40 p-3 rounded-xl border border-neutral-900 flex items-center justify-between text-xs">
+                                    <div className="space-y-1">
+                                        <div className="font-bold text-neutral-200 flex items-center gap-1.5">
+                                            {member.name}
+                                            {member.email === adminUser?.email && (
+                                                <span className="text-[9px] bg-amber-500/10 border border-amber-500/30 text-amber-500 px-1 py-0.2 rounded font-mono font-bold uppercase">Tú</span>
+                                            )}
+                                        </div>
+                                        <div className="text-[10px] text-neutral-500 font-mono">{member.email}</div>
+                                        <div className="text-[10px] text-neutral-600">Tel: {member.phone}</div>
+                                    </div>
+                                    <div className="text-right flex flex-col items-end gap-1.5">
+                                        <div className="flex items-center gap-1">
+                                            {member.password ? (
+                                                <span className="flex items-center gap-0.5 text-emerald-400 font-semibold text-[10px]" title="Tiene contraseña configurada">
+                                                    <Key className="w-3.5 h-3.5 text-emerald-400" />
+                                                    Clave OK
+                                                </span>
+                                            ) : (
+                                                <span className="flex items-center gap-0.5 text-amber-400/80 font-semibold text-[10px]" title="Debe configurar su clave en su primer acceso">
+                                                    <Key className="w-3.5 h-3.5 text-amber-400/80" />
+                                                    Pendiente
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                            member.is_active 
+                                                ? 'bg-emerald-950/20 text-emerald-400 border border-emerald-900/20' 
+                                                : 'bg-neutral-900 text-neutral-500'
+                                        }`}>
+                                            {member.is_active ? 'Activo' : 'Inactivo'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {/* --- FEED RECIENTE DE COMPRAS --- */}

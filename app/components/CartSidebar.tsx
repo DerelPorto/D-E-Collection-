@@ -55,7 +55,8 @@ export default function CartSidebar() {
       items: validItems.map(item => ({ id: item.id, qty: item.quantity }))
     };
 
-    const message = `Hola D&E, quiero confirmar este pedido de la web:\n\n${productList}\n\n*TOTAL: RD$${total.toLocaleString()}*\n\nQuedo atento para el pago y envío.\n\n[ORDEN_WEB:${JSON.stringify(payload)}]`;
+    const payloadEncoded = window.btoa(JSON.stringify(payload));
+    const message = `Hola D&E, quiero confirmar este pedido de la web:\n\n${productList}\n\n*TOTAL: RD$${total.toLocaleString()}*\n\nQuedo atento para el pago y envío.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n[ORDEN_WEB:${payloadEncoded}]`;
     const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
   };
